@@ -1,0 +1,82 @@
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: iot-sensor-alerts
+    folder: IoT
+    interval: 30s
+    rules:
+      - uid: temperature-above-40
+        title: Temperature above 40°C
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: postgres
+            model:
+              datasource:
+                type: postgres
+                uid: postgres
+              editorMode: code
+              format: time_series
+              intervalMs: 1000
+              maxDataPoints: 43200
+              rawQuery: true
+              rawSql: |
+                SELECT
+                  m.measurement_date AS time,
+                  s.name AS metric,
+                  m.temperature AS value
+                FROM sensor_measurements m
+                INNER JOIN sensors s ON s.id = m.sensor_id
+                WHERE m.temperature IS NOT NULL
+                  AND m.measurement_date > NOW() - INTERVAL '5 minutes'
+                ORDER BY 1
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 40
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        noDataState: OK
+        execErrState: Error
+        for: 30s
+        annotations:
+          summary: Latest temperature is above 40°C
+          description: Worker or API wrote a temperature over the 40°C warning threshold.
+        labels:
+          severity: warning
+        isPaused: false

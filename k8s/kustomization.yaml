@@ -1,0 +1,25 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: iot
+resources:
+  - namespace.yaml
+  - config.yaml
+  - postgres.yaml
+  - api.yaml
+  - worker.yaml
+  - grafana.yaml
+generatorOptions:
+  disableNameSuffixHash: true
+configMapGenerator:
+  - name: grafana-datasources
+    files:
+      - postgres.yml=grafana/postgres.yml
+  - name: grafana-dashboards-provider
+    files:
+      - dashboards.yml=grafana/dashboards.yml
+  - name: grafana-alerting
+    files:
+      - rules.yml=grafana/rules.yml
+  - name: grafana-dashboards
+    files:
+      - iot-monitoring.json=grafana/iot-monitoring.json

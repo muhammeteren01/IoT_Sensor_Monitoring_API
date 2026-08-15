@@ -1,0 +1,147 @@
+# Spec: Enterprise IoT Sensor Monitoring Platform
+
+## Objective
+
+Fiziksel cihaz olmadan, multi-tenant hiyerarşi (Company → Facility → Zone → Sensor) üzerinde sensör ölçümlerini toplayan, dinamik alarm kuralları ve bakım süreçleri olan, Grafana ile izlenen bir .NET 10 IoT platformu.
+
+Kullanıcı: müşteri firmalar ve operatörler. Başarı: `docker compose up -d` ile API, Worker, PostgreSQL ve Grafana ayağa kalkar; aktif sensörler kademeli veri üretir; alarm ve kalibrasyon kuralları çalışır.
+
+## Tech Stack
+
+- .NET 10 (C#)
+- ASP.NET Core Web API (controllers)
+- .NET Worker Service
+- PostgreSQL + EF Core (Code-First, migrations)
+- Serilog (Information=yeşil, Warning=sarı, Error=kırmızı)
+- JWT Bearer (BCrypt, SuperAdmin / CompanyAdmin / Operator)
+- FluentValidation (request DTO'lar)
+- Docker Compose (API, Worker, PostgreSQL, Grafana)
+- Kubernetes manifests (`k8s/`)
+
+## Commands
+
+```
+docker compose up -d --build
+dotnet restore IoTSensorMonitoring.sln
+dotnet build IoTSensorMonitoring.sln
+dotnet ef migrations add <Name> --project src/IoTSensorMonitoring.Infrastructure --startup-project src/IoTSensorMonitoring.Api --output-dir Persistence/Migrations
+dotnet ef database update --project src/IoTSensorMonitoring.Infrastructure --startup-project src/IoTSensorMonitoring.Api
+dotnet run --project src/IoTSensorMonitoring.Api
+dotnet run --project src/IoTSensorMonitoring.Worker
+dotnet test IoTSensorMonitoring.sln
+kubectl apply -k k8s
+```
+
+## Project Structure
+
+```
+src/
+  IoTSensorMonitoring.Domain          → Entities, enums (bağımlılık yok)
+  IoTSensorMonitoring.Application     → DTO, interface, iş kuralları (→ Domain)
+  IoTSensorMonitoring.Infrastructure  → EF Core, PostgreSQL, repository (→ Application)
+  IoTSensorMonitoring.Api             → REST, Swagger, Serilog host (→ Application, Infrastructure)
+  IoTSensorMonitoring.Worker          → Simülatör + rules engine host (→ Application, Infrastructure)
+k8s/                                  → Kubernetes (Deployment / Service / PVC)
+tests/
+  IoTSensorMonitoring.Tests           → xUnit + Moq + FluentAssertions
+```
+
+Bağımlılık yönü: Api/Worker → Infrastructure → Application → Domain. Domain hiçbir katmana referans vermez.
+
+## Domain Model
+
+Company → Facility → Zone → Sensor → Measurement / AlertRule / AlertHistory / MaintenanceLog  
+Sensor → DeviceModel
+
+Enum alanlar (DBML varchar notları): `SensorStatus`, `SensorMetric`, `ComparisonOperator`, `AlertSeverity`, `MaintenanceActionType`, `UserRole`.  
+`DeviceModel.SupportedMetrics` şemadaki gibi string (ör. `Temperature,Humidity,Pressure`).  
+`User.CompanyId` null ise SuperAdmin (sistem geneli); dolu ise şirket kullanıcısı.  
+`AlertHistory.ResolvedByUserId` JWT’deki kullanıcı id’si (nullable Guid).
+
+## Auth
+
+- `POST /api/auth/login` (anonim), `POST /api/auth/register` (SuperAdmin / CompanyAdmin), `GET /api/auth/me`
+- JWT claim: `sub`, `email`, `role`, `company_id` (SuperAdmin’de yok)
+- EF global query filter: CompanyAdmin / Operator yalnız kendi şirketini görür; SuperAdmin ve Worker filtre uygulamaz
+- DeviceModel global katalog (filtre yok); yazma SuperAdmin
+- Seed (Development): `admin@iot.local` / `Admin123!`
+
+## Worker
+
+Worker, Application’daki `ISensorSimulationService` ile her `IntervalSeconds` (varsayılan 10) bir döngü çalıştırır. JWT yok; `SystemCurrentUser` tenant filtresini kapatır.
+
+- Yalnız `SensorStatus.Active` sensörler
+- Ölçüm: son değerden kademeli sapma (random walk); yalnızca `DeviceModel.SupportedMetrics` alanları doldurulur
+- Alarm: aktif `AlertRule` eşiği aşılırsa `AlertHistory` yazılır; aynı kural için çözülmemiş kayıt varsa tekrar yazılmaz
+- Kalibrasyon: `CalibrationPeriodDays` doluysa vadesi geçmiş / `CalibrationWarningDays` (7) içindeyse Warning log
+- Döngü başına DI scope (DbContext sızıntısı olmasın)
+
+## Grafana
+
+`docker compose up -d --build` API, Worker, PostgreSQL ve Grafana'yı kaldırır.
+
+- API Swagger: `http://localhost:8080` (admin@iot.local / Admin123!)
+- Grafana: `http://localhost:3000` (admin / admin)
+- Worker container içinde çalışır; JWT yok
+
+Dashboard `grafana/dashboards/iot-monitoring.json` provision edilir:
+
+- Anlık sıcaklık / nem / basınç (eşik renkleri: 40°C, 80%, 950 hPa)
+- Sensör durumu tablosu
+- Zaman serisi (sıcaklık, nem, basınç)
+- Seçili aralıktaki toplam ölçüm
+- Sensör değişkeni, time range, auto-refresh 10s
+
+Alert: `Temperature above 40°C` (son 5 dk, 30s `for`). Worker normalde ~22°C üretir; Grafana alert’ini görmek için API’den 40+ ölçüm basılır.
+
+API container açılışta `Database.Migrate` + SuperAdmin seed çalıştırır.
+
+## Kubernetes
+
+Docker Desktop Kubernetes açıkken (önce `docker compose down`):
+
+```
+docker compose build
+kubectl apply -k k8s
+```
+
+- API: `http://localhost:30080`
+- Grafana: `http://localhost:30300`
+- Namespace: `iot`
+- İmajlar: `iot-api:local`, `iot-worker:local` (`imagePullPolicy: IfNotPresent`)
+
+## Code Style
+
+- PascalCase tipler/metodlar, `_camelCase` private field
+- Async suffix: `GetByIdAsync`
+- Entity: Domain; DTO: Application; DbContext/config: Infrastructure
+- Request DTO doğrulama: Application `Validations/` altında FluentValidation; Domain entity'ye validator yok
+- Nullable enabled, implicit usings
+
+## Testing Strategy
+
+`tests/IoTSensorMonitoring.Tests` — xUnit, Moq, FluentAssertions. Servisler mock repository ile; controller Authorize attribute'ları reflection ile. Request validator'lar gerçek FluentValidation kurallarıyla. Integration / WebApplicationFactory bu fazda yok.
+
+## Boundaries
+
+- Always: Katman kurallarına uy; Domain'e EF/ASP.NET paketi ekleme; log seviyelerini doğru kullan
+- Ask first: Yeni NuGet, şema değişikliği, yeni proje
+- Never: Secret commit, Domain'den dış katmana referans, katman atlayarak Data'yı Api'den çağırma (repository somut tipi)
+
+## Success Criteria (bu faz)
+
+- [x] 5 proje + 1 solution
+- [x] `dotnet build` hatasız
+- [x] Referans grafiği yukarıdaki gibi
+- [x] Katman klasör iskeleti hazır
+- [x] JWT + tenant filtre
+- [x] `dotnet test` yeşil (Auth, TenantGuard, Authorize, Company/Facility/Alert)
+- [x] Worker simülatör + alarm motoru + kalibrasyon uyarısı
+- [x] FluentValidation (request DTO'lar, Application katmanı)
+- [x] Grafana dashboard + Temperature > 40 alert
+- [x] `docker compose up -d --build` → API + Worker + PostgreSQL + Grafana
+- [x] Kubernetes manifests (`kubectl apply -k k8s`)
+
+## Open Questions
+
+- (yok)

@@ -1,0 +1,15 @@
+**/.vs
+**/.idea
+**/.vscode
+**/bin
+**/obj
+**/artifacts
+**/.git
+**/*.user
+**/*.suo
+**/logs
+**/TestResults
+tests
+k8s
+docs
+.cursor

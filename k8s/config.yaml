@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: iot-secrets
+  namespace: iot
+type: Opaque
+stringData:
+  POSTGRES_USER: iot
+  POSTGRES_PASSWORD: iot
+  POSTGRES_DB: iot_sensor_monitoring
+  ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=iot_sensor_monitoring;Username=iot;Password=iot
+  JwtSettings__Secret: IoTSensorMonitoring_DevJwtSecret_ChangeMe_32
+  SeedSettings__Password: Admin123!
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: iot-config
+  namespace: iot
+data:
+  ASPNETCORE_ENVIRONMENT: Development
+  DOTNET_ENVIRONMENT: Development
+  JwtSettings__Issuer: IoTSensorMonitoringApi
+  JwtSettings__Audience: IoTSensorMonitoringApi
+  SeedSettings__Enabled: "true"
+  SeedSettings__Email: admin@iot.local
+  SeedSettings__FirstName: Super
+  SeedSettings__LastName: Admin
+  WorkerSettings__IntervalSeconds: "10"
+  WorkerSettings__CalibrationWarningDays: "7"

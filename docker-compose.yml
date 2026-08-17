@@ -34,6 +34,17 @@ services:
       SeedSettings__Password: Admin123!
       SeedSettings__FirstName: Super
       SeedSettings__LastName: Admin
+      GrafanaSettings__Enabled: "true"
+      GrafanaSettings__InternalUrl: http://grafana:3000
+      GrafanaSettings__AdminUser: admin
+      GrafanaSettings__AdminPassword: admin
+      GrafanaSettings__ClientId: grafana
+      GrafanaSettings__ClientSecret: PulseGridGrafanaOAuthSecret_ChangeMe
+      GrafanaSettings__RedirectUris: http://localhost:3000/login/generic_oauth,http://localhost:30300/login/generic_oauth
+      GrafanaSettings__PostgresHost: postgres
+      GrafanaSettings__PostgresPort: "5432"
+      GrafanaSettings__PostgresDatabase: iot_sensor_monitoring
+      GrafanaSettings__RolePasswordSecret: IoTSensorMonitoring_DevJwtSecret_ChangeMe_32
     depends_on:
       postgres:
         condition: service_healthy
@@ -72,7 +83,27 @@ services:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin
       GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_USERS_AUTO_ASSIGN_ORG: "false"
+      GF_SECURITY_DISABLE_BRUTE_FORCE_LOGIN_PROTECTION: "true"
       GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/dashboards/iot-monitoring.json
+      GF_SERVER_ROOT_URL: http://localhost:3000
+      GF_AUTH_GENERIC_OAUTH_ENABLED: "true"
+      GF_AUTH_GENERIC_OAUTH_NAME: PulseGrid
+      GF_AUTH_GENERIC_OAUTH_CLIENT_ID: grafana
+      GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET: PulseGridGrafanaOAuthSecret_ChangeMe
+      GF_AUTH_GENERIC_OAUTH_SCOPES: openid email profile
+      GF_AUTH_GENERIC_OAUTH_AUTH_URL: http://localhost:8080/oauth/authorize
+      GF_AUTH_GENERIC_OAUTH_TOKEN_URL: http://api:8080/oauth/token
+      GF_AUTH_GENERIC_OAUTH_API_URL: http://api:8080/oauth/userinfo
+      GF_AUTH_GENERIC_OAUTH_USE_PKCE: "true"
+      GF_AUTH_GENERIC_OAUTH_ALLOW_SIGN_UP: "true"
+      GF_AUTH_GENERIC_OAUTH_EMAIL_ATTRIBUTE_PATH: email
+      GF_AUTH_GENERIC_OAUTH_LOGIN_ATTRIBUTE_PATH: login
+      GF_AUTH_GENERIC_OAUTH_NAME_ATTRIBUTE_PATH: name
+      GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH: role
+      GF_AUTH_GENERIC_OAUTH_SKIP_ORG_ROLE_SYNC: "true"
+      GF_AUTH_OAUTH_SKIP_ORG_ROLE_UPDATE_SYNC: "true"
+      GF_AUTH_GENERIC_OAUTH_ALLOW_ASSIGN_GRAFANA_ADMIN: "true"
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
@@ -80,6 +111,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command: grafana cli admin reset-admin-password admin || true; exec /run.sh
     restart: unless-stopped
 
 volumes:

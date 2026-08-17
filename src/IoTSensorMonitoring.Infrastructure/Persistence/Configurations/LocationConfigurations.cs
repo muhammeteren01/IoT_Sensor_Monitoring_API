@@ -14,6 +14,7 @@ public class CompanyConfiguration : IEntityTypeConfiguration<Company>
         builder.Property(x => x.Name).HasColumnName("name").HasMaxLength(200).IsRequired();
         builder.Property(x => x.ContactEmail).HasColumnName("contact_email").HasMaxLength(256);
         builder.Property(x => x.IsActive).HasColumnName("is_active").HasDefaultValue(true);
+        builder.Property(x => x.GrafanaOrgId).HasColumnName("grafana_org_id");
         builder.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
 
         builder.HasMany(x => x.Facilities)

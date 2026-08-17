@@ -11,12 +11,23 @@ public class DeviceModelConfiguration : IEntityTypeConfiguration<DeviceModel>
         builder.ToTable("device_models");
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Id).HasColumnName("id");
+        builder.Property(x => x.CompanyId).HasColumnName("company_id").IsRequired();
         builder.Property(x => x.Manufacturer).HasColumnName("manufacturer").HasMaxLength(200).IsRequired();
         builder.Property(x => x.ModelNumber).HasColumnName("model_number").HasMaxLength(100).IsRequired();
         builder.Property(x => x.SupportedMetrics).HasColumnName("supported_metrics").HasMaxLength(500).IsRequired();
         builder.Property(x => x.CalibrationPeriodDays).HasColumnName("calibration_period_days");
 
-        builder.HasIndex(x => new { x.Manufacturer, x.ModelNumber }).IsUnique();
+        builder.HasIndex(x => x.CompanyId)
+            .HasDatabaseName("IX_device_models_company_id");
+        builder.HasIndex(x => new { x.CompanyId, x.Manufacturer, x.ModelNumber })
+            .IsUnique()
+            .HasDatabaseName("IX_device_models_company_id_manufacturer_model_number");
+
+        builder.HasOne(x => x.Company)
+            .WithMany(x => x.DeviceModels)
+            .HasForeignKey(x => x.CompanyId)
+            .HasConstraintName("FK_device_models_companies_company_id")
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasMany(x => x.Sensors)
             .WithOne(x => x.DeviceModel)

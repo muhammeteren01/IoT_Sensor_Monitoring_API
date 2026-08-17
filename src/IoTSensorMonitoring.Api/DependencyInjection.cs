@@ -1,6 +1,8 @@
 using System.Text;
 using IoTSensorMonitoring.Application.Abstractions;
+using IoTSensorMonitoring.Application.Interfaces;
 using IoTSensorMonitoring.Application.Settings;
+using IoTSensorMonitoring.Api.HostedServices;
 using IoTSensorMonitoring.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -17,6 +19,8 @@ public static class DependencyInjection
         services.Configure<SeedSettings>(configuration.GetSection(SeedSettings.SectionName));
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUser, CurrentUser>();
+        services.AddSingleton<IAuthCodeStore, MemoryAuthCodeStore>();
+        services.AddHostedService<GrafanaTenantSyncHostedService>();
 
         var jwtSettings = configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>()
             ?? throw new InvalidOperationException("JwtSettings configuration is missing.");

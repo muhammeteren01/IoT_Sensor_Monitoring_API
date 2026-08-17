@@ -13,7 +13,7 @@ public class CreateDeviceModelRequestValidatorTests
         string modelNumber = "SITRANS-T",
         string supportedMetrics = "Temperature,Humidity,Pressure",
         int? calibrationPeriodDays = 180) =>
-        new(manufacturer, modelNumber, supportedMetrics, calibrationPeriodDays);
+        new(Guid.NewGuid(), manufacturer, modelNumber, supportedMetrics, calibrationPeriodDays);
 
     [Fact]
     public void Validate_WhenRequestValid_Succeeds()

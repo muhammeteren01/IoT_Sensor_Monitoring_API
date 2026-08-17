@@ -140,6 +140,10 @@ namespace IoTSensorMonitoring.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<int?>("GrafanaOrgId")
+                        .HasColumnType("integer")
+                        .HasColumnName("grafana_org_id");
+
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -168,6 +172,10 @@ namespace IoTSensorMonitoring.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("calibration_period_days");
 
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("company_id");
+
                     b.Property<string>("Manufacturer")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -188,8 +196,12 @@ namespace IoTSensorMonitoring.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Manufacturer", "ModelNumber")
-                        .IsUnique();
+                    b.HasIndex("CompanyId")
+                        .HasDatabaseName("IX_device_models_company_id");
+
+                    b.HasIndex("CompanyId", "Manufacturer", "ModelNumber")
+                        .IsUnique()
+                        .HasDatabaseName("IX_device_models_company_id_manufacturer_model_number");
 
                     b.ToTable("device_models", (string)null);
                 });
@@ -496,6 +508,18 @@ namespace IoTSensorMonitoring.Infrastructure.Persistence.Migrations
                     b.Navigation("Sensor");
                 });
 
+            modelBuilder.Entity("IoTSensorMonitoring.Domain.Entities.DeviceModel", b =>
+                {
+                    b.HasOne("IoTSensorMonitoring.Domain.Entities.Company", "Company")
+                        .WithMany("DeviceModels")
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("FK_device_models_companies_company_id")
+                        .IsRequired();
+
+                    b.Navigation("Company");
+                });
+
             modelBuilder.Entity("IoTSensorMonitoring.Domain.Entities.Facility", b =>
                 {
                     b.HasOne("IoTSensorMonitoring.Domain.Entities.Company", "Company")
@@ -576,6 +600,8 @@ namespace IoTSensorMonitoring.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("IoTSensorMonitoring.Domain.Entities.Company", b =>
                 {
+                    b.Navigation("DeviceModels");
+
                     b.Navigation("Facilities");
 
                     b.Navigation("Users");

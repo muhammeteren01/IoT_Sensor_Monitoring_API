@@ -3,6 +3,7 @@ using IoTSensorMonitoring.Application.Interfaces.Services;
 using IoTSensorMonitoring.Application.Settings;
 using IoTSensorMonitoring.Application.Simulation;
 using IoTSensorMonitoring.Domain.Entities;
+using IoTSensorMonitoring.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -65,7 +66,8 @@ public class SensorSimulationService : ISensorSimulationService
         }
 
         var previous = await _unitOfWork.SensorMeasurements.GetLatestBySensorIdAsync(sensor.Id, cancellationToken);
-        var measurement = _generator.Next(sensor.Id, previous, metrics);
+        var effectivePrevious = await ResolvePreviousWithBatteryReplacementAsync(sensor, previous, metrics, cancellationToken);
+        var measurement = _generator.Next(sensor.Id, effectivePrevious, metrics);
 
         await _unitOfWork.SensorMeasurements.AddAsync(measurement, cancellationToken);
 
@@ -77,7 +79,7 @@ public class SensorSimulationService : ISensorSimulationService
             await EvaluateAlertsAsync(sensor, measurement, rules, openRuleIds, cancellationToken);
         }
 
-        WarnIfCalibrationDue(sensor);
+        await WarnIfCalibrationDueAsync(sensor, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation(
@@ -151,25 +153,67 @@ public class SensorSimulationService : ISensorSimulationService
         }
     }
 
-    private void WarnIfCalibrationDue(Sensor sensor)
+    private async Task<SensorMeasurement?> ResolvePreviousWithBatteryReplacementAsync(
+        Sensor sensor,
+        SensorMeasurement? previous,
+        IReadOnlySet<SensorMetric> metrics,
+        CancellationToken cancellationToken)
     {
-        if (sensor.DeviceModel.CalibrationPeriodDays is not int periodDays || periodDays <= 0)
+        if (!metrics.Contains(SensorMetric.BatteryLevel))
+        {
+            return previous;
+        }
+
+        var latestReplacement = await _unitOfWork.MaintenanceLogs.GetLatestBySensorIdAndActionTypeAsync(
+            sensor.Id,
+            MaintenanceActionType.BatteryReplacement,
+            cancellationToken);
+
+        if (latestReplacement is null)
+        {
+            return previous;
+        }
+
+        var hasResetMeasurement = await _unitOfWork.SensorMeasurements.HasFullBatteryMeasurementSinceAsync(
+            sensor.Id,
+            latestReplacement.PerformedAt,
+            cancellationToken);
+
+        if (hasResetMeasurement)
+        {
+            return previous;
+        }
+
+        return new SensorMeasurement
+        {
+            SensorId = sensor.Id,
+            BatteryLevel = 100m,
+            MeasurementDate = latestReplacement.PerformedAt,
+            Temperature = previous?.Temperature,
+            Humidity = previous?.Humidity,
+            Pressure = previous?.Pressure,
+            SignalStrength = previous?.SignalStrength
+        };
+    }
+
+    private async Task WarnIfCalibrationDueAsync(Sensor sensor, CancellationToken cancellationToken)
+    {
+        var dueAt = await ResolveCalibrationDueDateAsync(sensor, cancellationToken);
+        if (!dueAt.HasValue)
         {
             return;
         }
 
-        var reference = sensor.LastCalibrationDate ?? sensor.CreatedAt;
-        var dueAt = reference.AddDays(periodDays);
         var now = DateTime.UtcNow;
-        var warningFrom = dueAt.AddDays(-_settings.CalibrationWarningDays);
+        var warningFrom = dueAt.Value.AddDays(-_settings.CalibrationWarningDays);
 
-        if (now >= dueAt)
+        if (now >= dueAt.Value)
         {
             _logger.LogWarning(
                 "Calibration overdue. SensorId={SensorId}, SensorName={SensorName}, DueAt={DueAt:u}",
                 sensor.Id,
                 sensor.Name,
-                dueAt);
+                dueAt.Value);
         }
         else if (now >= warningFrom)
         {
@@ -177,7 +221,28 @@ public class SensorSimulationService : ISensorSimulationService
                 "Calibration due soon. SensorId={SensorId}, SensorName={SensorName}, DueAt={DueAt:u}",
                 sensor.Id,
                 sensor.Name,
-                dueAt);
+                dueAt.Value);
         }
+    }
+
+    private async Task<DateTime?> ResolveCalibrationDueDateAsync(Sensor sensor, CancellationToken cancellationToken)
+    {
+        var latestCalibration = await _unitOfWork.MaintenanceLogs.GetLatestBySensorIdAndActionTypeAsync(
+            sensor.Id,
+            MaintenanceActionType.Calibration,
+            cancellationToken);
+
+        if (latestCalibration?.NextDueDate is DateTime nextDueDate)
+        {
+            return nextDueDate;
+        }
+
+        if (sensor.DeviceModel.CalibrationPeriodDays is not int periodDays || periodDays <= 0)
+        {
+            return null;
+        }
+
+        var reference = sensor.LastCalibrationDate ?? sensor.CreatedAt;
+        return reference.AddDays(periodDays);
     }
 }

@@ -45,10 +45,17 @@ public class MaintenanceLogService : IMaintenanceLogService
             NextDueDate = request.NextDueDate
         };
 
-        if (request.ActionType == MaintenanceActionType.Calibration)
+        switch (request.ActionType)
         {
-            sensor.LastCalibrationDate = performedAt;
-            _unitOfWork.Sensors.Update(sensor);
+            case MaintenanceActionType.Calibration:
+                sensor.LastCalibrationDate = performedAt;
+                log.NextDueDate = ComputeNextCalibrationDue(sensor.DeviceModel, performedAt);
+                _unitOfWork.Sensors.Update(sensor);
+                break;
+
+            case MaintenanceActionType.BatteryReplacement:
+                await ApplyBatteryReplacementAsync(sensor, performedAt, cancellationToken);
+                break;
         }
 
         await _unitOfWork.MaintenanceLogs.AddAsync(log, cancellationToken);
@@ -66,6 +73,51 @@ public class MaintenanceLogService : IMaintenanceLogService
 
         var logs = await _unitOfWork.MaintenanceLogs.GetBySensorIdAsync(sensorId, cancellationToken);
         return logs.Select(Map).ToList();
+    }
+
+    private static DateTime? ComputeNextCalibrationDue(DeviceModel deviceModel, DateTime performedAt)
+    {
+        if (deviceModel.CalibrationPeriodDays is not int periodDays || periodDays <= 0)
+        {
+            return null;
+        }
+
+        return performedAt.AddDays(periodDays);
+    }
+
+    private async Task ApplyBatteryReplacementAsync(Sensor sensor, DateTime performedAt, CancellationToken cancellationToken)
+    {
+        var previous = await _unitOfWork.SensorMeasurements.GetLatestBySensorIdAsync(sensor.Id, cancellationToken);
+        var measurementDate = ResolveMeasurementDateAfter(previous, performedAt);
+
+        await _unitOfWork.SensorMeasurements.AddAsync(
+            new SensorMeasurement
+            {
+                SensorId = sensor.Id,
+                MeasurementDate = measurementDate,
+                BatteryLevel = 100m,
+                Temperature = previous?.Temperature,
+                Humidity = previous?.Humidity,
+                Pressure = previous?.Pressure,
+                SignalStrength = previous?.SignalStrength
+            },
+            cancellationToken);
+    }
+
+    private static DateTime ResolveMeasurementDateAfter(SensorMeasurement? previous, DateTime performedAt)
+    {
+        var measurementDate = DateTime.UtcNow;
+        if (measurementDate < performedAt)
+        {
+            measurementDate = performedAt;
+        }
+
+        if (previous?.MeasurementDate >= measurementDate)
+        {
+            measurementDate = previous.MeasurementDate.AddMilliseconds(1);
+        }
+
+        return measurementDate;
     }
 
     private static MaintenanceLogDto Map(MaintenanceLog log) =>

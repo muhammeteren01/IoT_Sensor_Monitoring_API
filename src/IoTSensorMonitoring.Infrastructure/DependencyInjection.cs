@@ -1,4 +1,7 @@
 using IoTSensorMonitoring.Infrastructure.Persistence;
+using IoTSensorMonitoring.Infrastructure.Grafana;
+using IoTSensorMonitoring.Application.Interfaces.Services;
+using IoTSensorMonitoring.Application.Settings;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,6 +18,11 @@ public static class DependencyInjection
         services.AddDbContext<AppDbContext>(options =>
             options.UseNpgsql(connectionString, npgsql =>
                 npgsql.EnableRetryOnFailure(2, TimeSpan.FromSeconds(1), null)));
+
+        services.Configure<GrafanaSettings>(configuration.GetSection(GrafanaSettings.SectionName));
+        services.AddHttpClient<IGrafanaAdminClient, GrafanaAdminClient>();
+        services.AddScoped<IGrafanaDatabaseRoleService, GrafanaDatabaseRoleService>();
+        services.AddScoped<IGrafanaTenantProvisioner, GrafanaTenantProvisioner>();
 
         return services;
     }

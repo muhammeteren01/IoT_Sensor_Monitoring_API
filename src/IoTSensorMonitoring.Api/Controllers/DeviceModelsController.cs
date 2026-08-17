@@ -29,7 +29,7 @@ public class DeviceModelsController : ControllerBase
         => Ok(await _deviceModelService.GetByIdAsync(id, cancellationToken));
 
     [HttpPost]
-    [Authorize(Roles = AppRoles.SuperAdminOnly)]
+    [Authorize(Roles = AppRoles.Writers)]
     public async Task<ActionResult<DeviceModelDto>> Create([FromBody] CreateDeviceModelRequest request, CancellationToken cancellationToken)
     {
         var created = await _deviceModelService.CreateAsync(request, cancellationToken);
@@ -37,12 +37,12 @@ public class DeviceModelsController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Roles = AppRoles.SuperAdminOnly)]
+    [Authorize(Roles = AppRoles.Writers)]
     public async Task<ActionResult<DeviceModelDto>> Update(Guid id, [FromBody] UpdateDeviceModelRequest request, CancellationToken cancellationToken)
         => Ok(await _deviceModelService.UpdateAsync(id, request, cancellationToken));
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = AppRoles.SuperAdminOnly)]
+    [Authorize(Roles = AppRoles.Writers)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
         await _deviceModelService.DeleteAsync(id, cancellationToken);

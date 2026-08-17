@@ -17,7 +17,23 @@ public class SensorMeasurementRepository : Repository<SensorMeasurement>, ISenso
             .AsNoTracking()
             .Where(measurement => measurement.SensorId == sensorId)
             .OrderByDescending(measurement => measurement.MeasurementDate)
+            .ThenByDescending(measurement => measurement.Id)
             .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task<bool> HasFullBatteryMeasurementSinceAsync(
+        Guid sensorId,
+        DateTime since,
+        CancellationToken cancellationToken = default)
+    {
+        return await Set
+            .AsNoTracking()
+            .AnyAsync(
+                measurement =>
+                    measurement.SensorId == sensorId &&
+                    measurement.MeasurementDate >= since &&
+                    measurement.BatteryLevel >= 99m,
+                cancellationToken);
     }
 
     public async Task<IReadOnlyList<SensorMeasurement>> GetBySensorIdAsync(

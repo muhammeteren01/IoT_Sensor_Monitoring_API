@@ -44,7 +44,7 @@ public class SensorService : ISensorService
         var facility = await _unitOfWork.Facilities.GetByIdAsync(zone.FacilityId, cancellationToken)
             ?? throw new NotFoundException(nameof(Facility), zone.FacilityId);
         TenantGuard.EnsureCompanyAccess(_currentUser, facility.CompanyId);
-        await EnsureDeviceModelExistsAsync(request.DeviceModelId, cancellationToken);
+        await EnsureDeviceModelForCompanyAsync(request.DeviceModelId, facility.CompanyId, cancellationToken);
 
         if (await _unitOfWork.Sensors.GetByMacAddressAsync(request.MacAddress, cancellationToken) is not null)
         {
@@ -166,11 +166,17 @@ public class SensorService : ISensorService
             ?? throw new NotFoundException(nameof(Zone), zoneId);
     }
 
-    private async Task EnsureDeviceModelExistsAsync(Guid deviceModelId, CancellationToken cancellationToken)
+    private async Task EnsureDeviceModelForCompanyAsync(
+        Guid deviceModelId,
+        Guid companyId,
+        CancellationToken cancellationToken)
     {
-        if (!await _unitOfWork.DeviceModels.AnyAsync(model => model.Id == deviceModelId, cancellationToken))
+        var deviceModel = await _unitOfWork.DeviceModels.GetByIdAsync(deviceModelId, cancellationToken)
+            ?? throw new NotFoundException(nameof(DeviceModel), deviceModelId);
+
+        if (deviceModel.CompanyId != companyId)
         {
-            throw new NotFoundException(nameof(DeviceModel), deviceModelId);
+            throw new Common.Exceptions.ValidationException("Device model does not belong to this company.");
         }
     }
 

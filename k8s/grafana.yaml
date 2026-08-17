@@ -28,6 +28,7 @@ spec:
       containers:
         - name: grafana
           image: grafana/grafana:11.5.2
+          command: ["/bin/sh", "-c", "grafana cli admin reset-admin-password admin || true; exec /run.sh"]
           ports:
             - containerPort: 3000
           env:
@@ -37,8 +38,48 @@ spec:
               value: admin
             - name: GF_USERS_ALLOW_SIGN_UP
               value: "false"
+            - name: GF_USERS_AUTO_ASSIGN_ORG
+              value: "false"
+            - name: GF_SECURITY_DISABLE_BRUTE_FORCE_LOGIN_PROTECTION
+              value: "true"
             - name: GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH
               value: /etc/grafana/dashboards/iot-monitoring.json
+            - name: GF_SERVER_ROOT_URL
+              value: http://localhost:30300
+            - name: GF_AUTH_GENERIC_OAUTH_ENABLED
+              value: "true"
+            - name: GF_AUTH_GENERIC_OAUTH_NAME
+              value: PulseGrid
+            - name: GF_AUTH_GENERIC_OAUTH_CLIENT_ID
+              value: grafana
+            - name: GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET
+              value: PulseGridGrafanaOAuthSecret_ChangeMe
+            - name: GF_AUTH_GENERIC_OAUTH_SCOPES
+              value: openid email profile
+            - name: GF_AUTH_GENERIC_OAUTH_AUTH_URL
+              value: http://localhost:30080/oauth/authorize
+            - name: GF_AUTH_GENERIC_OAUTH_TOKEN_URL
+              value: http://api:8080/oauth/token
+            - name: GF_AUTH_GENERIC_OAUTH_API_URL
+              value: http://api:8080/oauth/userinfo
+            - name: GF_AUTH_GENERIC_OAUTH_USE_PKCE
+              value: "true"
+            - name: GF_AUTH_GENERIC_OAUTH_ALLOW_SIGN_UP
+              value: "true"
+            - name: GF_AUTH_GENERIC_OAUTH_EMAIL_ATTRIBUTE_PATH
+              value: email
+            - name: GF_AUTH_GENERIC_OAUTH_LOGIN_ATTRIBUTE_PATH
+              value: login
+            - name: GF_AUTH_GENERIC_OAUTH_NAME_ATTRIBUTE_PATH
+              value: name
+            - name: GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH
+              value: role
+            - name: GF_AUTH_GENERIC_OAUTH_SKIP_ORG_ROLE_SYNC
+              value: "true"
+            - name: GF_AUTH_OAUTH_SKIP_ORG_ROLE_UPDATE_SYNC
+              value: "true"
+            - name: GF_AUTH_GENERIC_OAUTH_ALLOW_ASSIGN_GRAFANA_ADMIN
+              value: "true"
           volumeMounts:
             - name: data
               mountPath: /var/lib/grafana

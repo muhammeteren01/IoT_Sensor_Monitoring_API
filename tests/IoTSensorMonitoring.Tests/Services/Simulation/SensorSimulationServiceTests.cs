@@ -19,6 +19,7 @@ public class SensorSimulationServiceTests
     private readonly Mock<ISensorMeasurementRepository> _measurements = new();
     private readonly Mock<IAlertRuleRepository> _rules = new();
     private readonly Mock<IAlertHistoryRepository> _histories = new();
+    private readonly Mock<IMaintenanceLogRepository> _maintenanceLogs = new();
     private readonly Mock<ILogger<SensorSimulationService>> _logger = new();
     private readonly SensorSimulationService _sut;
 
@@ -28,6 +29,7 @@ public class SensorSimulationServiceTests
         _unitOfWork.SetupGet(unit => unit.SensorMeasurements).Returns(_measurements.Object);
         _unitOfWork.SetupGet(unit => unit.AlertRules).Returns(_rules.Object);
         _unitOfWork.SetupGet(unit => unit.AlertHistories).Returns(_histories.Object);
+        _unitOfWork.SetupGet(unit => unit.MaintenanceLogs).Returns(_maintenanceLogs.Object);
         _unitOfWork.Setup(unit => unit.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
         _sut = new SensorSimulationService(
@@ -134,6 +136,46 @@ public class SensorSimulationServiceTests
             Times.Never);
     }
 
+    [Fact]
+    public async Task RunCycleAsync_WhenBatteryReplacementPending_ResetsBatteryFromFull()
+    {
+        var sensor = CreateSensor("Temperature,BatteryLevel");
+        var replacementAt = DateTime.UtcNow.AddMinutes(-1);
+        SetupSensorCycle(sensor, previous: new SensorMeasurement
+        {
+            SensorId = sensor.Id,
+            BatteryLevel = 90m,
+            Temperature = 22m,
+            MeasurementDate = DateTime.UtcNow
+        }, rules: [], unresolved: []);
+
+        _maintenanceLogs
+            .Setup(repository => repository.GetLatestBySensorIdAndActionTypeAsync(
+                sensor.Id,
+                MaintenanceActionType.BatteryReplacement,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MaintenanceLog
+            {
+                SensorId = sensor.Id,
+                ActionType = MaintenanceActionType.BatteryReplacement,
+                PerformedAt = replacementAt
+            });
+        _measurements
+            .Setup(repository => repository.HasFullBatteryMeasurementSinceAsync(sensor.Id, replacementAt, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        SensorMeasurement? added = null;
+        _measurements
+            .Setup(repository => repository.AddAsync(It.IsAny<SensorMeasurement>(), It.IsAny<CancellationToken>()))
+            .Callback<SensorMeasurement, CancellationToken>((measurement, _) => added = measurement)
+            .Returns(Task.CompletedTask);
+
+        await _sut.RunCycleAsync();
+
+        added.Should().NotBeNull();
+        added!.BatteryLevel.Should().BeGreaterThan(99m);
+    }
+
     private void SetupSensorCycle(
         Sensor sensor,
         SensorMeasurement? previous,
@@ -155,6 +197,24 @@ public class SensorSimulationServiceTests
         _histories
             .Setup(repository => repository.GetUnresolvedBySensorIdAsync(sensor.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(unresolved);
+        _maintenanceLogs
+            .Setup(repository => repository.GetLatestBySensorIdAndActionTypeAsync(
+                sensor.Id,
+                MaintenanceActionType.Calibration,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((MaintenanceLog?)null);
+        _maintenanceLogs
+            .Setup(repository => repository.GetLatestBySensorIdAndActionTypeAsync(
+                sensor.Id,
+                MaintenanceActionType.BatteryReplacement,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((MaintenanceLog?)null);
+        _measurements
+            .Setup(repository => repository.HasFullBatteryMeasurementSinceAsync(
+                sensor.Id,
+                It.IsAny<DateTime>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
     }
 
     private static Sensor CreateSensor(string supportedMetrics) =>
@@ -165,6 +225,7 @@ public class SensorSimulationServiceTests
             Status = SensorStatus.Active,
             DeviceModel = new DeviceModel
             {
+                CompanyId = Guid.NewGuid(),
                 Manufacturer = "Test",
                 ModelNumber = "T-1",
                 SupportedMetrics = supportedMetrics,

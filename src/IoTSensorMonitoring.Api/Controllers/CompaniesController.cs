@@ -13,15 +13,18 @@ public class CompaniesController : ControllerBase
 {
     private readonly ICompanyService _companyService;
     private readonly IFacilityService _facilityService;
+    private readonly IDeviceModelService _deviceModelService;
     private readonly IUserService _userService;
 
     public CompaniesController(
         ICompanyService companyService,
         IFacilityService facilityService,
+        IDeviceModelService deviceModelService,
         IUserService userService)
     {
         _companyService = companyService;
         _facilityService = facilityService;
+        _deviceModelService = deviceModelService;
         _userService = userService;
     }
 
@@ -39,6 +42,11 @@ public class CompaniesController : ControllerBase
     [Authorize(Roles = AppRoles.All)]
     public async Task<ActionResult<IReadOnlyList<FacilityDto>>> GetFacilities(Guid id, CancellationToken cancellationToken)
         => Ok(await _facilityService.GetByCompanyIdAsync(id, cancellationToken));
+
+    [HttpGet("{id:guid}/device-models")]
+    [Authorize(Roles = AppRoles.All)]
+    public async Task<ActionResult<IReadOnlyList<DeviceModelDto>>> GetDeviceModels(Guid id, CancellationToken cancellationToken)
+        => Ok(await _deviceModelService.GetByCompanyIdAsync(id, cancellationToken));
 
     [HttpGet("{id:guid}/users")]
     [Authorize(Roles = AppRoles.CompanyAdmins)]

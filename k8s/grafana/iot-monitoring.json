@@ -59,7 +59,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT m.measurement_date AS time, s.name AS metric, m.temperature AS value\nFROM sensor_measurements m\nINNER JOIN sensors s ON s.id = m.sensor_id\nWHERE $__timeFilter(m.measurement_date)\n  AND m.temperature IS NOT NULL\n  AND s.name IN (${sensor:sqlstring})\nORDER BY 1",
+          "rawSql": "SELECT m.measurement_date AS time, s.name AS metric, m.temperature AS value\nFROM sensor_measurements m\nINNER JOIN sensors s ON s.id = m.sensor_id\nINNER JOIN zones z ON z.id = s.zone_id\nINNER JOIN facilities f ON f.id = z.facility_id\nINNER JOIN companies c ON c.id = f.company_id\nWHERE $__timeFilter(m.measurement_date)\n  AND m.temperature IS NOT NULL\n  AND c.name IN (${company:sqlstring})\n  AND s.name IN (${sensor:sqlstring})\nORDER BY 1",
           "refId": "A"
         }
       ],
@@ -107,7 +107,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT m.measurement_date AS time, s.name AS metric, m.humidity AS value\nFROM sensor_measurements m\nINNER JOIN sensors s ON s.id = m.sensor_id\nWHERE $__timeFilter(m.measurement_date)\n  AND m.humidity IS NOT NULL\n  AND s.name IN (${sensor:sqlstring})\nORDER BY 1",
+          "rawSql": "SELECT m.measurement_date AS time, s.name AS metric, m.humidity AS value\nFROM sensor_measurements m\nINNER JOIN sensors s ON s.id = m.sensor_id\nINNER JOIN zones z ON z.id = s.zone_id\nINNER JOIN facilities f ON f.id = z.facility_id\nINNER JOIN companies c ON c.id = f.company_id\nWHERE $__timeFilter(m.measurement_date)\n  AND m.humidity IS NOT NULL\n  AND c.name IN (${company:sqlstring})\n  AND s.name IN (${sensor:sqlstring})\nORDER BY 1",
           "refId": "A"
         }
       ],
@@ -153,7 +153,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT m.measurement_date AS time, s.name AS metric, m.pressure AS value\nFROM sensor_measurements m\nINNER JOIN sensors s ON s.id = m.sensor_id\nWHERE $__timeFilter(m.measurement_date)\n  AND m.pressure IS NOT NULL\n  AND s.name IN (${sensor:sqlstring})\nORDER BY 1",
+          "rawSql": "SELECT m.measurement_date AS time, s.name AS metric, m.pressure AS value\nFROM sensor_measurements m\nINNER JOIN sensors s ON s.id = m.sensor_id\nINNER JOIN zones z ON z.id = s.zone_id\nINNER JOIN facilities f ON f.id = z.facility_id\nINNER JOIN companies c ON c.id = f.company_id\nWHERE $__timeFilter(m.measurement_date)\n  AND m.pressure IS NOT NULL\n  AND c.name IN (${company:sqlstring})\n  AND s.name IN (${sensor:sqlstring})\nORDER BY 1",
           "refId": "A"
         }
       ],
@@ -196,7 +196,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT COUNT(*) AS total\nFROM sensor_measurements m\nINNER JOIN sensors s ON s.id = m.sensor_id\nWHERE $__timeFilter(m.measurement_date)\n  AND s.name IN (${sensor:sqlstring})",
+          "rawSql": "SELECT COUNT(*) AS total\nFROM sensor_measurements m\nINNER JOIN sensors s ON s.id = m.sensor_id\nINNER JOIN zones z ON z.id = s.zone_id\nINNER JOIN facilities f ON f.id = z.facility_id\nINNER JOIN companies c ON c.id = f.company_id\nWHERE $__timeFilter(m.measurement_date)\n  AND c.name IN (${company:sqlstring})\n  AND s.name IN (${sensor:sqlstring})",
           "refId": "A"
         }
       ],
@@ -250,7 +250,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT s.name AS sensor, s.status, z.name AS zone, f.name AS facility, c.name AS company\nFROM sensors s\nINNER JOIN zones z ON z.id = s.zone_id\nINNER JOIN facilities f ON f.id = z.facility_id\nINNER JOIN companies c ON c.id = f.company_id\nWHERE s.name IN (${sensor:sqlstring})\nORDER BY s.name",
+          "rawSql": "SELECT s.name AS sensor, s.status, z.name AS zone, f.name AS facility, c.name AS company\nFROM sensors s\nINNER JOIN zones z ON z.id = s.zone_id\nINNER JOIN facilities f ON f.id = z.facility_id\nINNER JOIN companies c ON c.id = f.company_id\nWHERE c.name IN (${company:sqlstring})\n  AND s.name IN (${sensor:sqlstring})\nORDER BY s.name",
           "refId": "A"
         }
       ],
@@ -310,7 +310,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT m.measurement_date AS time, s.name AS metric, m.temperature AS value\nFROM sensor_measurements m\nINNER JOIN sensors s ON s.id = m.sensor_id\nWHERE $__timeFilter(m.measurement_date)\n  AND m.temperature IS NOT NULL\n  AND s.name IN (${sensor:sqlstring})\nORDER BY 1",
+          "rawSql": "SELECT m.measurement_date AS time, s.name AS metric, m.temperature AS value\nFROM sensor_measurements m\nINNER JOIN sensors s ON s.id = m.sensor_id\nINNER JOIN zones z ON z.id = s.zone_id\nINNER JOIN facilities f ON f.id = z.facility_id\nINNER JOIN companies c ON c.id = f.company_id\nWHERE $__timeFilter(m.measurement_date)\n  AND m.temperature IS NOT NULL\n  AND c.name IN (${company:sqlstring})\n  AND s.name IN (${sensor:sqlstring})\nORDER BY 1",
           "refId": "A"
         }
       ],
@@ -372,7 +372,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT m.measurement_date AS time, s.name AS metric, m.humidity AS value\nFROM sensor_measurements m\nINNER JOIN sensors s ON s.id = m.sensor_id\nWHERE $__timeFilter(m.measurement_date)\n  AND m.humidity IS NOT NULL\n  AND s.name IN (${sensor:sqlstring})\nORDER BY 1",
+          "rawSql": "SELECT m.measurement_date AS time, s.name AS metric, m.humidity AS value\nFROM sensor_measurements m\nINNER JOIN sensors s ON s.id = m.sensor_id\nINNER JOIN zones z ON z.id = s.zone_id\nINNER JOIN facilities f ON f.id = z.facility_id\nINNER JOIN companies c ON c.id = f.company_id\nWHERE $__timeFilter(m.measurement_date)\n  AND m.humidity IS NOT NULL\n  AND c.name IN (${company:sqlstring})\n  AND s.name IN (${sensor:sqlstring})\nORDER BY 1",
           "refId": "A"
         }
       ],
@@ -432,7 +432,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT m.measurement_date AS time, s.name AS metric, m.pressure AS value\nFROM sensor_measurements m\nINNER JOIN sensors s ON s.id = m.sensor_id\nWHERE $__timeFilter(m.measurement_date)\n  AND m.pressure IS NOT NULL\n  AND s.name IN (${sensor:sqlstring})\nORDER BY 1",
+          "rawSql": "SELECT m.measurement_date AS time, s.name AS metric, m.pressure AS value\nFROM sensor_measurements m\nINNER JOIN sensors s ON s.id = m.sensor_id\nINNER JOIN zones z ON z.id = s.zone_id\nINNER JOIN facilities f ON f.id = z.facility_id\nINNER JOIN companies c ON c.id = f.company_id\nWHERE $__timeFilter(m.measurement_date)\n  AND m.pressure IS NOT NULL\n  AND c.name IN (${company:sqlstring})\n  AND s.name IN (${sensor:sqlstring})\nORDER BY 1",
           "refId": "A"
         }
       ],
@@ -447,16 +447,31 @@
   "templating": {
     "list": [
       {
-        "current": { "text": "All", "value": "$__all" },
         "datasource": { "type": "postgres", "uid": "postgres" },
-        "definition": "SELECT name FROM sensors ORDER BY name",
+        "definition": "SELECT name FROM companies WHERE is_active = true ORDER BY name",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Şirket",
+        "multi": false,
+        "name": "company",
+        "options": [],
+        "query": "SELECT name FROM companies WHERE is_active = true ORDER BY name",
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "datasource": { "type": "postgres", "uid": "postgres" },
+        "definition": "SELECT s.name FROM sensors s INNER JOIN zones z ON z.id = s.zone_id INNER JOIN facilities f ON f.id = z.facility_id INNER JOIN companies c ON c.id = f.company_id WHERE c.name IN (${company:sqlstring}) ORDER BY s.name",
         "hide": 0,
         "includeAll": true,
         "label": "Sensör",
         "multi": true,
         "name": "sensor",
         "options": [],
-        "query": "SELECT name FROM sensors ORDER BY name",
+        "query": "SELECT s.name FROM sensors s INNER JOIN zones z ON z.id = s.zone_id INNER JOIN facilities f ON f.id = z.facility_id INNER JOIN companies c ON c.id = f.company_id WHERE c.name IN (${company:sqlstring}) ORDER BY s.name",
         "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
@@ -472,6 +487,6 @@
   "timezone": "browser",
   "title": "IoT Sensor Monitoring",
   "uid": "iot-sensor-monitoring",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }

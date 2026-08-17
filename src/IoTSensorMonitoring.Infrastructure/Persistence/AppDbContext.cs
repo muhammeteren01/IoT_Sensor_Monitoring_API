@@ -41,6 +41,9 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Facility>().HasQueryFilter(entity =>
             !ApplyTenantFilter || entity.CompanyId == CurrentTenantId);
 
+        modelBuilder.Entity<DeviceModel>().HasQueryFilter(entity =>
+            !ApplyTenantFilter || entity.CompanyId == CurrentTenantId);
+
         modelBuilder.Entity<Zone>().HasQueryFilter(entity =>
             !ApplyTenantFilter || entity.Facility.CompanyId == CurrentTenantId);
 

@@ -19,6 +19,7 @@ public class ControllerAuthorizeAttributeTests
     [InlineData(nameof(CompaniesController.GetAll), AppRoles.All)]
     [InlineData(nameof(CompaniesController.GetById), AppRoles.All)]
     [InlineData(nameof(CompaniesController.GetFacilities), AppRoles.All)]
+    [InlineData(nameof(CompaniesController.GetDeviceModels), AppRoles.All)]
     [InlineData(nameof(CompaniesController.GetUsers), AppRoles.CompanyAdmins)]
     [InlineData(nameof(CompaniesController.Create), AppRoles.SuperAdminOnly)]
     [InlineData(nameof(CompaniesController.Update), AppRoles.SuperAdminOnly)]
@@ -53,9 +54,9 @@ public class ControllerAuthorizeAttributeTests
     [Theory]
     [InlineData(nameof(DeviceModelsController.GetAll), AppRoles.All)]
     [InlineData(nameof(DeviceModelsController.GetById), AppRoles.All)]
-    [InlineData(nameof(DeviceModelsController.Create), AppRoles.SuperAdminOnly)]
-    [InlineData(nameof(DeviceModelsController.Update), AppRoles.SuperAdminOnly)]
-    [InlineData(nameof(DeviceModelsController.Delete), AppRoles.SuperAdminOnly)]
+    [InlineData(nameof(DeviceModelsController.Create), AppRoles.Writers)]
+    [InlineData(nameof(DeviceModelsController.Update), AppRoles.Writers)]
+    [InlineData(nameof(DeviceModelsController.Delete), AppRoles.Writers)]
     public void DeviceModelsController_ActionRoles(string methodName, string expectedRoles)
     {
         AssertMethodRoles(typeof(DeviceModelsController), methodName, expectedRoles);

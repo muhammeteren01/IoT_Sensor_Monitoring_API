@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using IoTSensorMonitoring.Application.Interfaces.Services;
 using IoTSensorMonitoring.Application.Validations.Companies;
 using IoTSensorMonitoring.Application.Common.Exceptions;
 using IoTSensorMonitoring.Application.DTOs;
@@ -7,6 +8,7 @@ using IoTSensorMonitoring.Application.Interfaces.Repositories;
 using IoTSensorMonitoring.Application.Services;
 using IoTSensorMonitoring.Domain.Entities;
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
 namespace IoTSensorMonitoring.Tests.Services.Companies;
@@ -16,18 +18,29 @@ public class CompanyServiceTests
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<IRepository<Company>> _companies = new();
     private readonly Mock<IUserRepository> _users = new();
+    private readonly Mock<IRepository<DeviceModel>> _deviceModels = new();
     private readonly Mock<ISensorRepository> _sensors = new();
+    private readonly Mock<IGrafanaTenantProvisioner> _grafana = new();
     private readonly CompanyService _sut;
 
     public CompanyServiceTests()
     {
         _unitOfWork.SetupGet(unit => unit.Companies).Returns(_companies.Object);
         _unitOfWork.SetupGet(unit => unit.Users).Returns(_users.Object);
+        _unitOfWork.SetupGet(unit => unit.DeviceModels).Returns(_deviceModels.Object);
         _unitOfWork.SetupGet(unit => unit.Sensors).Returns(_sensors.Object);
+        _grafana
+            .Setup(provisioner => provisioner.ProvisionAsync(It.IsAny<Company>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _grafana
+            .Setup(provisioner => provisioner.DeprovisionAsync(It.IsAny<Company>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
         _sut = new CompanyService(
             _unitOfWork.Object,
+            _grafana.Object,
             new CreateCompanyRequestValidator(),
-            new UpdateCompanyRequestValidator());
+            new UpdateCompanyRequestValidator(),
+            NullLogger<CompanyService>.Instance);
     }
 
     [Fact]
@@ -49,6 +62,9 @@ public class CompanyServiceTests
         result.Name.Should().Be("Acme");
         result.Id.Should().Be(added.Id);
         _unitOfWork.Verify(unit => unit.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _grafana.Verify(
+            provisioner => provisioner.ProvisionAsync(It.IsAny<Company>(), It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]
@@ -92,6 +108,9 @@ public class CompanyServiceTests
         _users
             .Setup(repository => repository.AnyAsync(It.IsAny<Expression<Func<User, bool>>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
+        _deviceModels
+            .Setup(repository => repository.AnyAsync(It.IsAny<Expression<Func<DeviceModel, bool>>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
         _sensors
             .Setup(repository => repository.ExistsInCompanyAsync(company.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
@@ -112,6 +131,9 @@ public class CompanyServiceTests
         _users
             .Setup(repository => repository.AnyAsync(It.IsAny<Expression<Func<User, bool>>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
+        _deviceModels
+            .Setup(repository => repository.AnyAsync(It.IsAny<Expression<Func<DeviceModel, bool>>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
         _sensors
             .Setup(repository => repository.ExistsInCompanyAsync(company.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
@@ -119,6 +141,9 @@ public class CompanyServiceTests
 
         await _sut.DeleteAsync(company.Id);
 
+        _grafana.Verify(
+            provisioner => provisioner.DeprovisionAsync(company, It.IsAny<CancellationToken>()),
+            Times.Once);
         _companies.Verify(repository => repository.Remove(company), Times.Once);
         _unitOfWork.Verify(unit => unit.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }

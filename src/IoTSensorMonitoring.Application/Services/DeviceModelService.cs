@@ -1,4 +1,6 @@
 using FluentValidation;
+using IoTSensorMonitoring.Application.Abstractions;
+using IoTSensorMonitoring.Application.Authorization;
 using IoTSensorMonitoring.Application.Common.Exceptions;
 using IoTSensorMonitoring.Application.DTOs;
 using IoTSensorMonitoring.Application.Interfaces;
@@ -10,15 +12,18 @@ namespace IoTSensorMonitoring.Application.Services;
 public class DeviceModelService : IDeviceModelService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUser _currentUser;
     private readonly IValidator<CreateDeviceModelRequest> _createValidator;
     private readonly IValidator<UpdateDeviceModelRequest> _updateValidator;
 
     public DeviceModelService(
         IUnitOfWork unitOfWork,
+        ICurrentUser currentUser,
         IValidator<CreateDeviceModelRequest> createValidator,
         IValidator<UpdateDeviceModelRequest> updateValidator)
     {
         _unitOfWork = unitOfWork;
+        _currentUser = currentUser;
         _createValidator = createValidator;
         _updateValidator = updateValidator;
     }
@@ -27,17 +32,23 @@ public class DeviceModelService : IDeviceModelService
     {
         await ValidationHelper.EnsureValidAsync(_createValidator, request, cancellationToken);
 
+        var companyId = TenantGuard.ResolveCompanyId(_currentUser, request.CompanyId);
+        await EnsureCompanyExistsAsync(companyId, cancellationToken);
+
         var exists = await _unitOfWork.DeviceModels.AnyAsync(
-            model => model.Manufacturer == request.Manufacturer && model.ModelNumber == request.ModelNumber,
+            model => model.CompanyId == companyId
+                     && model.Manufacturer == request.Manufacturer
+                     && model.ModelNumber == request.ModelNumber,
             cancellationToken);
 
         if (exists)
         {
-            throw new ConflictException($"Device model '{request.Manufacturer} {request.ModelNumber}' already exists.");
+            throw new ConflictException($"Device model '{request.Manufacturer} {request.ModelNumber}' already exists for this company.");
         }
 
         var deviceModel = new DeviceModel
         {
+            CompanyId = companyId,
             Manufacturer = request.Manufacturer,
             ModelNumber = request.ModelNumber,
             SupportedMetrics = request.SupportedMetrics,
@@ -56,6 +67,15 @@ public class DeviceModelService : IDeviceModelService
         return models.Select(Map).ToList();
     }
 
+    public async Task<IReadOnlyList<DeviceModelDto>> GetByCompanyIdAsync(Guid companyId, CancellationToken cancellationToken = default)
+    {
+        await EnsureCompanyExistsAsync(companyId, cancellationToken);
+        var models = await _unitOfWork.DeviceModels.FindAsync(
+            model => model.CompanyId == companyId,
+            cancellationToken);
+        return models.Select(Map).ToList();
+    }
+
     public async Task<DeviceModelDto> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return Map(await GetRequiredAsync(id, cancellationToken));
@@ -69,13 +89,14 @@ public class DeviceModelService : IDeviceModelService
 
         var duplicate = await _unitOfWork.DeviceModels.AnyAsync(
             model => model.Id != id
+                     && model.CompanyId == deviceModel.CompanyId
                      && model.Manufacturer == request.Manufacturer
                      && model.ModelNumber == request.ModelNumber,
             cancellationToken);
 
         if (duplicate)
         {
-            throw new ConflictException($"Device model '{request.Manufacturer} {request.ModelNumber}' already exists.");
+            throw new ConflictException($"Device model '{request.Manufacturer} {request.ModelNumber}' already exists for this company.");
         }
 
         deviceModel.Manufacturer = request.Manufacturer;
@@ -102,6 +123,14 @@ public class DeviceModelService : IDeviceModelService
         await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 
+    private async Task EnsureCompanyExistsAsync(Guid companyId, CancellationToken cancellationToken)
+    {
+        if (!await _unitOfWork.Companies.AnyAsync(company => company.Id == companyId, cancellationToken))
+        {
+            throw new NotFoundException(nameof(Company), companyId);
+        }
+    }
+
     private async Task<DeviceModel> GetRequiredAsync(Guid id, CancellationToken cancellationToken)
     {
         return await _unitOfWork.DeviceModels.GetByIdAsync(id, cancellationToken)
@@ -109,5 +138,11 @@ public class DeviceModelService : IDeviceModelService
     }
 
     private static DeviceModelDto Map(DeviceModel deviceModel) =>
-        new(deviceModel.Id, deviceModel.Manufacturer, deviceModel.ModelNumber, deviceModel.SupportedMetrics, deviceModel.CalibrationPeriodDays);
+        new(
+            deviceModel.Id,
+            deviceModel.CompanyId,
+            deviceModel.Manufacturer,
+            deviceModel.ModelNumber,
+            deviceModel.SupportedMetrics,
+            deviceModel.CalibrationPeriodDays);
 }

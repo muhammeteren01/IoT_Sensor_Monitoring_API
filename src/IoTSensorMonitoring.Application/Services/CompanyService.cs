@@ -4,23 +4,30 @@ using IoTSensorMonitoring.Application.DTOs;
 using IoTSensorMonitoring.Application.Interfaces;
 using IoTSensorMonitoring.Application.Interfaces.Services;
 using IoTSensorMonitoring.Domain.Entities;
+using Microsoft.Extensions.Logging;
 
 namespace IoTSensorMonitoring.Application.Services;
 
 public class CompanyService : ICompanyService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IGrafanaTenantProvisioner _grafanaTenantProvisioner;
     private readonly IValidator<CreateCompanyRequest> _createValidator;
     private readonly IValidator<UpdateCompanyRequest> _updateValidator;
+    private readonly ILogger<CompanyService> _logger;
 
     public CompanyService(
         IUnitOfWork unitOfWork,
+        IGrafanaTenantProvisioner grafanaTenantProvisioner,
         IValidator<CreateCompanyRequest> createValidator,
-        IValidator<UpdateCompanyRequest> updateValidator)
+        IValidator<UpdateCompanyRequest> updateValidator,
+        ILogger<CompanyService> logger)
     {
         _unitOfWork = unitOfWork;
+        _grafanaTenantProvisioner = grafanaTenantProvisioner;
         _createValidator = createValidator;
         _updateValidator = updateValidator;
+        _logger = logger;
     }
 
     public async Task<CompanyDto> CreateAsync(CreateCompanyRequest request, CancellationToken cancellationToken = default)
@@ -37,6 +44,7 @@ public class CompanyService : ICompanyService
 
         await _unitOfWork.Companies.AddAsync(company, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await TryProvisionAsync(company, cancellationToken);
 
         return Map(company);
     }
@@ -64,6 +72,7 @@ public class CompanyService : ICompanyService
 
         _unitOfWork.Companies.Update(company);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await TryProvisionAsync(company, cancellationToken);
 
         return Map(company);
     }
@@ -77,13 +86,52 @@ public class CompanyService : ICompanyService
             throw new ConflictException("Company cannot be deleted while it still has users.");
         }
 
+        if (await _unitOfWork.DeviceModels.AnyAsync(model => model.CompanyId == id, cancellationToken))
+        {
+            throw new ConflictException("Company cannot be deleted while it still has device models.");
+        }
+
         if (await _unitOfWork.Sensors.ExistsInCompanyAsync(id, cancellationToken))
         {
             throw new ConflictException("Company cannot be deleted while it still has sensors.");
         }
 
+        await TryDeprovisionAsync(company, cancellationToken);
+
         _unitOfWork.Companies.Remove(company);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task TryProvisionAsync(Company company, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _grafanaTenantProvisioner.ProvisionAsync(company, cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(
+                exception,
+                "Grafana provision deferred for company {CompanyId} ({CompanyName})",
+                company.Id,
+                company.Name);
+        }
+    }
+
+    private async Task TryDeprovisionAsync(Company company, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _grafanaTenantProvisioner.DeprovisionAsync(company, cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(
+                exception,
+                "Grafana deprovision failed for company {CompanyId} ({CompanyName})",
+                company.Id,
+                company.Name);
+        }
     }
 
     private async Task<Company> GetRequiredAsync(Guid id, CancellationToken cancellationToken)

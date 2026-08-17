@@ -11,6 +11,9 @@ stringData:
   ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=iot_sensor_monitoring;Username=iot;Password=iot
   JwtSettings__Secret: IoTSensorMonitoring_DevJwtSecret_ChangeMe_32
   SeedSettings__Password: Admin123!
+  GrafanaSettings__AdminPassword: admin
+  GrafanaSettings__ClientSecret: PulseGridGrafanaOAuthSecret_ChangeMe
+  GrafanaSettings__RolePasswordSecret: IoTSensorMonitoring_DevJwtSecret_ChangeMe_32
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -26,5 +29,13 @@ data:
   SeedSettings__Email: admin@iot.local
   SeedSettings__FirstName: Super
   SeedSettings__LastName: Admin
+  GrafanaSettings__Enabled: "true"
+  GrafanaSettings__InternalUrl: http://grafana:3000
+  GrafanaSettings__AdminUser: admin
+  GrafanaSettings__ClientId: grafana
+  GrafanaSettings__RedirectUris: http://localhost:3000/login/generic_oauth,http://localhost:30300/login/generic_oauth
+  GrafanaSettings__PostgresHost: postgres
+  GrafanaSettings__PostgresPort: "5432"
+  GrafanaSettings__PostgresDatabase: iot_sensor_monitoring
   WorkerSettings__IntervalSeconds: "10"
   WorkerSettings__CalibrationWarningDays: "7"

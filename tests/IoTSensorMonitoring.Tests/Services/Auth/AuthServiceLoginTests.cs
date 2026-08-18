@@ -1,7 +1,5 @@
-using IoTSensorMonitoring.Application.Abstractions;
 using IoTSensorMonitoring.Application.Common.Exceptions;
 using IoTSensorMonitoring.Application.DTOs;
-using IoTSensorMonitoring.Application.Interfaces;
 using IoTSensorMonitoring.Application.Interfaces.Repositories;
 using IoTSensorMonitoring.Application.Interfaces.Services;
 using IoTSensorMonitoring.Application.Services;
@@ -14,16 +12,14 @@ namespace IoTSensorMonitoring.Tests.Services.Auth;
 public class AuthServiceLoginTests
 {
     private readonly Mock<IUserRepository> _userRepository = new();
-    private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<IPasswordService> _passwordService = new();
     private readonly Mock<ITokenService> _tokenService = new();
-    private readonly Mock<ICurrentUser> _currentUser = new();
     private readonly AuthService _sut;
 
     public AuthServiceLoginTests()
     {
         _sut = AuthServiceTestHelper.CreateSut(
-            _userRepository, _unitOfWork, _passwordService, _tokenService, _currentUser);
+            _userRepository, _passwordService, _tokenService);
     }
 
     [Fact]

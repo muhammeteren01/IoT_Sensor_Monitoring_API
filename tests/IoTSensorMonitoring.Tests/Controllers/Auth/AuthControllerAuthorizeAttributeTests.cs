@@ -1,6 +1,5 @@
 using System.Reflection;
 using IoTSensorMonitoring.Api.Controllers;
-using IoTSensorMonitoring.Application.Authorization;
 using FluentAssertions;
 using Microsoft.AspNetCore.Authorization;
 
@@ -14,18 +13,6 @@ public class AuthControllerAuthorizeAttributeTests
         var method = typeof(AuthController).GetMethod(nameof(AuthController.Login));
         method.Should().NotBeNull();
         method!.GetCustomAttributes<AllowAnonymousAttribute>(inherit: true).Should().ContainSingle();
-    }
-
-    [Fact]
-    public void Register_AuthorizeRolesCompanyAdmins()
-    {
-        var method = typeof(AuthController).GetMethod(nameof(AuthController.Register));
-        method.Should().NotBeNull();
-
-        var authorize = method!.GetCustomAttribute<AuthorizeAttribute>(inherit: true);
-        authorize.Should().NotBeNull();
-        authorize!.Roles.Should().Be(AppRoles.CompanyAdmins);
-        authorize.Roles.Should().Be($"{AppRoles.SuperAdmin},{AppRoles.CompanyAdmin}");
     }
 
     [Fact]

@@ -5,100 +5,110 @@ using IoTSensorMonitoring.Application.Interfaces;
 using IoTSensorMonitoring.Application.Interfaces.Repositories;
 using IoTSensorMonitoring.Application.Interfaces.Services;
 using IoTSensorMonitoring.Application.Services;
+using IoTSensorMonitoring.Application.Validations.Users;
 using IoTSensorMonitoring.Domain.Entities;
 using IoTSensorMonitoring.Domain.Enums;
 using FluentAssertions;
 using Moq;
 
-namespace IoTSensorMonitoring.Tests.Services.Auth;
+namespace IoTSensorMonitoring.Tests.Services.Users;
 
-public class AuthServiceRegisterTests
+public class UserServiceCreateTests
 {
-    private readonly Mock<IUserRepository> _userRepository = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
-    private readonly Mock<IPasswordService> _passwordService = new();
-    private readonly Mock<ITokenService> _tokenService = new();
+    private readonly Mock<IUserRepository> _users = new();
     private readonly Mock<ICurrentUser> _currentUser = new();
-    private readonly AuthService _sut;
+    private readonly Mock<IPasswordService> _passwordService = new();
+    private readonly UserService _sut;
 
-    public AuthServiceRegisterTests()
+    public UserServiceCreateTests()
     {
-        _sut = AuthServiceTestHelper.CreateSut(
-            _userRepository, _unitOfWork, _passwordService, _tokenService, _currentUser);
+        _unitOfWork.SetupGet(unit => unit.Users).Returns(_users.Object);
+        _sut = new UserService(
+            _unitOfWork.Object,
+            _currentUser.Object,
+            _passwordService.Object,
+            new CreateUserRequestValidator());
     }
 
     [Fact]
-    public async Task RegisterAsync_WhenEmailEmpty_ThrowsValidationException()
+    public async Task CreateAsync_WhenEmailEmpty_ThrowsValidationException()
     {
-        var request = AuthServiceTestHelper.ValidRegister(email: "");
+        var request = ValidRequest(email: "");
 
-        var act = async () => await _sut.RegisterAsync(request);
+        var act = async () => await _sut.CreateAsync(request);
 
         await act.Should().ThrowAsync<ValidationException>()
-            .Where(exception => exception.Errors.ContainsKey(nameof(RegisterRequest.Email)));
-        _userRepository.Verify(
+            .Where(exception => exception.Errors.ContainsKey(nameof(CreateUserRequest.Email)));
+        _users.Verify(
             repository => repository.GetByEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
     [Fact]
-    public async Task RegisterAsync_WhenFirstNameEmpty_ThrowsValidationException()
+    public async Task CreateAsync_WhenFirstNameEmpty_ThrowsValidationException()
     {
-        var request = AuthServiceTestHelper.ValidRegister(firstName: "");
+        var request = ValidRequest(firstName: "");
 
-        var act = async () => await _sut.RegisterAsync(request);
+        var act = async () => await _sut.CreateAsync(request);
 
         await act.Should().ThrowAsync<ValidationException>();
     }
 
     [Fact]
-    public async Task RegisterAsync_WhenPasswordShort_ThrowsValidationException()
+    public async Task CreateAsync_WhenPasswordShort_ThrowsValidationException()
     {
-        var request = AuthServiceTestHelper.ValidRegister(password: "12345");
+        var request = ValidRequest(password: "12345");
 
-        var act = async () => await _sut.RegisterAsync(request);
+        var act = async () => await _sut.CreateAsync(request);
 
         await act.Should().ThrowAsync<ValidationException>()
-            .Where(exception => exception.Errors[nameof(RegisterRequest.Password)]
+            .Where(exception => exception.Errors[nameof(CreateUserRequest.Password)]
                 .Contains("Password must be at least 6 characters."));
     }
 
     [Fact]
-    public async Task RegisterAsync_WhenEmailAlreadyRegistered_ThrowsConflictException()
+    public async Task CreateAsync_WhenEmailAlreadyInUse_ThrowsConflictException()
     {
         var companyId = Guid.NewGuid();
-        AuthServiceTestHelper.SetupCompanyAdminCurrentUser(_currentUser, companyId);
-        var request = AuthServiceTestHelper.ValidRegister(companyId: companyId);
-        _userRepository
+        SetupCompanyAdmin(companyId);
+        var request = ValidRequest(companyId: companyId);
+        _users
             .Setup(repository => repository.GetByEmailAsync(request.Email, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(AuthServiceTestHelper.CreateUser(email: request.Email));
+            .ReturnsAsync(new User
+            {
+                Email = request.Email,
+                FirstName = "Ali",
+                LastName = "Veli",
+                PasswordHash = "hash",
+                Role = UserRole.Operator
+            });
 
-        var act = async () => await _sut.RegisterAsync(request);
+        var act = async () => await _sut.CreateAsync(request);
 
         await act.Should().ThrowAsync<ConflictException>()
-            .WithMessage("This email is already registered.");
-        _userRepository.Verify(
+            .WithMessage("This email is already in use.");
+        _users.Verify(
             repository => repository.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()),
             Times.Never);
         _unitOfWork.Verify(unit => unit.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
-    public async Task RegisterAsync_WhenSuccessful_HashesAddsSavesAndReturnsAuthResponse()
+    public async Task CreateAsync_WhenSuccessful_HashesAddsSavesAndReturnsUserDto()
     {
         var companyId = Guid.NewGuid();
-        AuthServiceTestHelper.SetupCompanyAdminCurrentUser(_currentUser, companyId);
-        var request = AuthServiceTestHelper.ValidRegister(role: UserRole.Operator, companyId: null);
-        _userRepository
+        SetupCompanyAdmin(companyId);
+        var request = ValidRequest(role: UserRole.Operator, companyId: null);
+        _users
             .Setup(repository => repository.GetByEmailAsync(request.Email, It.IsAny<CancellationToken>()))
             .ReturnsAsync((User?)null);
         _passwordService
             .Setup(service => service.HashPassword(request.Password))
             .Returns("hashed-password");
-        AuthServiceTestHelper.SetupToken(_tokenService, "register-jwt");
 
         User? added = null;
-        _userRepository
+        _users
             .Setup(repository => repository.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
             .Callback<User, CancellationToken>((user, _) => added = user)
             .Returns(Task.CompletedTask);
@@ -106,7 +116,7 @@ public class AuthServiceRegisterTests
             .Setup(unit => unit.SaveChangesAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
 
-        var result = await _sut.RegisterAsync(request);
+        var result = await _sut.CreateAsync(request);
 
         added.Should().NotBeNull();
         added!.Email.Should().Be(request.Email);
@@ -117,36 +127,34 @@ public class AuthServiceRegisterTests
         added.CompanyId.Should().Be(companyId);
         added.IsActive.Should().BeTrue();
 
-        result.Token.Should().Be("register-jwt");
         result.Email.Should().Be(request.Email);
         result.CompanyId.Should().Be(companyId);
         result.Role.Should().Be(UserRole.Operator);
-        result.UserId.Should().Be(added.Id);
+        result.Id.Should().Be(added.Id);
 
         _passwordService.Verify(service => service.HashPassword(request.Password), Times.Once);
-        _userRepository.Verify(repository => repository.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()), Times.Once);
+        _users.Verify(repository => repository.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(unit => unit.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task RegisterAsync_WhenSuperAdminRole_CompanyIdIsNull()
+    public async Task CreateAsync_WhenSuperAdminRole_CompanyIdIsNull()
     {
-        AuthServiceTestHelper.SetupSuperAdminCurrentUser(_currentUser);
-        var request = AuthServiceTestHelper.ValidRegister(role: UserRole.SuperAdmin, companyId: null);
-        _userRepository
+        SetupSuperAdmin();
+        var request = ValidRequest(role: UserRole.SuperAdmin, companyId: null);
+        _users
             .Setup(repository => repository.GetByEmailAsync(request.Email, It.IsAny<CancellationToken>()))
             .ReturnsAsync((User?)null);
         _passwordService.Setup(service => service.HashPassword(request.Password)).Returns("hash");
-        AuthServiceTestHelper.SetupToken(_tokenService);
 
         User? added = null;
-        _userRepository
+        _users
             .Setup(repository => repository.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
             .Callback<User, CancellationToken>((user, _) => added = user)
             .Returns(Task.CompletedTask);
         _unitOfWork.Setup(unit => unit.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
-        var result = await _sut.RegisterAsync(request);
+        var result = await _sut.CreateAsync(request);
 
         added!.CompanyId.Should().BeNull();
         result.CompanyId.Should().BeNull();
@@ -154,17 +162,42 @@ public class AuthServiceRegisterTests
     }
 
     [Fact]
-    public async Task RegisterAsync_WhenCompanyAdminAssignsSuperAdmin_ThrowsForbiddenException()
+    public async Task CreateAsync_WhenCompanyAdminAssignsSuperAdmin_ThrowsForbiddenException()
     {
-        AuthServiceTestHelper.SetupCompanyAdminCurrentUser(_currentUser, Guid.NewGuid());
-        var request = AuthServiceTestHelper.ValidRegister(role: UserRole.SuperAdmin);
+        SetupCompanyAdmin(Guid.NewGuid());
+        var request = ValidRequest(role: UserRole.SuperAdmin);
 
-        var act = async () => await _sut.RegisterAsync(request);
+        var act = async () => await _sut.CreateAsync(request);
 
         await act.Should().ThrowAsync<ForbiddenException>()
             .WithMessage("Only SuperAdmin can assign the SuperAdmin role.");
-        _userRepository.Verify(
+        _users.Verify(
             repository => repository.GetByEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
+
+    private void SetupCompanyAdmin(Guid companyId)
+    {
+        _currentUser.SetupGet(user => user.IsAuthenticated).Returns(true);
+        _currentUser.SetupGet(user => user.IsSuperAdmin).Returns(false);
+        _currentUser.SetupGet(user => user.CompanyId).Returns(companyId);
+        _currentUser.SetupGet(user => user.Role).Returns(UserRole.CompanyAdmin);
+    }
+
+    private void SetupSuperAdmin()
+    {
+        _currentUser.SetupGet(user => user.IsAuthenticated).Returns(true);
+        _currentUser.SetupGet(user => user.IsSuperAdmin).Returns(true);
+        _currentUser.SetupGet(user => user.CompanyId).Returns((Guid?)null);
+        _currentUser.SetupGet(user => user.Role).Returns(UserRole.SuperAdmin);
+    }
+
+    private static CreateUserRequest ValidRequest(
+        string email = "ali@test.com",
+        UserRole role = UserRole.Operator,
+        Guid? companyId = null,
+        string firstName = "Ali",
+        string lastName = "Veli",
+        string password = "Secret1!") =>
+        new(firstName, lastName, email, password, companyId ?? Guid.NewGuid(), role);
 }

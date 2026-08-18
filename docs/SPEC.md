@@ -60,7 +60,8 @@ Enum alanlar (DBML varchar notları): `SensorStatus`, `SensorMetric`, `Compariso
 
 ## Auth
 
-- `POST /api/auth/login` (anonim), `POST /api/auth/register` (SuperAdmin / CompanyAdmin), `GET /api/auth/me`
+- `POST /api/auth/login` (anonim), `GET /api/auth/me`
+- `GET /api/users`, `POST /api/users` (SuperAdmin / CompanyAdmin; kullanıcı oluşturma, self-register değil)
 - JWT claim: `sub`, `email`, `role`, `company_id` (SuperAdmin’de yok)
 - EF global query filter: CompanyAdmin / Operator yalnız kendi şirketini görür; SuperAdmin ve Worker filtre uygulamaz
 - DeviceModel şirket kataloğu (`CompanyId`); tesis değil işletme bazlı. Tenant filter var; yazma SuperAdmin / CompanyAdmin
@@ -78,8 +79,9 @@ Worker, Application’daki `ISensorSimulationService` ile her `IntervalSeconds` 
 
 ## Grafana
 
-`docker compose up -d --build` API, Worker, PostgreSQL ve Grafana'yı kaldırır.
+`docker compose up -d --build` API, Worker, PostgreSQL, Grafana ve PulseGrid UI'yi kaldırır.
 
+- PulseGrid UI: `http://localhost` (nginx; `/api` ve `/oauth` API'ye proxy)
 - API Swagger: `http://localhost:8080` (admin@iot.local / Admin123!)
 - Grafana: `http://localhost:3000`
   - SuperAdmin acil giriş: `admin` / `admin` (Main Org, tüm şirketler)
@@ -94,8 +96,6 @@ Worker, Application’daki `ISensorSimulationService` ile her `IntervalSeconds` 
 - SuperAdmin Grafana Main Org datasource'u `iot` kullanıcısıdır (RLS uygulanmaz)
 
 Dashboard `grafana/dashboards/iot-monitoring.json` Main Org'a provision edilir; şirket org'larına API kopyalar.
-
-Alert: `Temperature above 40°C` (son 5 dk, 30s `for`). Worker normalde ~22°C üretir; Grafana alert’ini görmek için API’den 40+ ölçüm basılır.
 
 API container açılışta `Database.Migrate` + SuperAdmin seed çalıştırır; Grafana tenant sync arka planda org/rol/datasource üretir.
 
@@ -141,7 +141,7 @@ kubectl apply -k k8s
 - [x] `dotnet test` yeşil (Auth, TenantGuard, Authorize, Company/Facility/Alert)
 - [x] Worker simülatör + alarm motoru + kalibrasyon uyarısı
 - [x] FluentValidation (request DTO'lar, Application katmanı)
-- [x] Grafana dashboard + Temperature > 40 alert
+- [x] Grafana dashboard
 - [x] `docker compose up -d --build` → API + Worker + PostgreSQL + Grafana
 - [x] Kubernetes manifests (`kubectl apply -k k8s`)
 

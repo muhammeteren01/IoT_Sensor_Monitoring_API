@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using IoTSensorMonitoring.Application.Authorization;
 using IoTSensorMonitoring.Application.DTOs;
 using IoTSensorMonitoring.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -16,16 +15,6 @@ public class AuthController : ControllerBase
     public AuthController(IAuthService authService)
     {
         _authService = authService;
-    }
-
-    [HttpPost("register")]
-    [Authorize(Roles = AppRoles.CompanyAdmins)]
-    public async Task<ActionResult<AuthResponse>> Register(
-        [FromBody] RegisterRequest request,
-        CancellationToken cancellationToken)
-    {
-        var response = await _authService.RegisterAsync(request, cancellationToken);
-        return Ok(response);
     }
 
     [HttpPost("login")]

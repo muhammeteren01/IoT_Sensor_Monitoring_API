@@ -53,7 +53,7 @@ spec:
             - name: GF_AUTH_GENERIC_OAUTH_CLIENT_ID
               value: grafana
             - name: GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET
-              value: PulseGridGrafanaOAuthSecret_ChangeMe
+              value: xwovJHQ9abUg70UaBbxhAWsV6g6gMCQSpWNOv7PGE9c
             - name: GF_AUTH_GENERIC_OAUTH_SCOPES
               value: openid email profile
             - name: GF_AUTH_GENERIC_OAUTH_AUTH_URL

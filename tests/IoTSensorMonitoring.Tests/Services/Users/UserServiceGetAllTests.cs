@@ -3,7 +3,9 @@ using IoTSensorMonitoring.Application.Abstractions;
 using IoTSensorMonitoring.Application.Common.Exceptions;
 using IoTSensorMonitoring.Application.Interfaces;
 using IoTSensorMonitoring.Application.Interfaces.Repositories;
+using IoTSensorMonitoring.Application.Interfaces.Services;
 using IoTSensorMonitoring.Application.Services;
+using IoTSensorMonitoring.Application.Validations.Users;
 using IoTSensorMonitoring.Domain.Entities;
 using IoTSensorMonitoring.Domain.Enums;
 using FluentAssertions;
@@ -23,7 +25,11 @@ public class UserServiceGetAllTests
     {
         _unitOfWork.SetupGet(unit => unit.Companies).Returns(_companies.Object);
         _unitOfWork.SetupGet(unit => unit.Users).Returns(_users.Object);
-        _sut = new UserService(_unitOfWork.Object, _currentUser.Object);
+        _sut = new UserService(
+            _unitOfWork.Object,
+            _currentUser.Object,
+            Mock.Of<IPasswordService>(),
+            new CreateUserRequestValidator());
     }
 
     [Fact]

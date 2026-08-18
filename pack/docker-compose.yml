@@ -18,7 +18,7 @@ services:
     restart: unless-stopped
 
   api:
-    image: muhammeteren/iotsensormonitoring:api
+    image: iot-api:local
     container_name: iot-api
     ports:
       - "8080:8080"
@@ -37,7 +37,7 @@ services:
       GrafanaSettings__AdminPassword: admin
       GrafanaSettings__ClientId: grafana
       GrafanaSettings__ClientSecret: xwovJHQ9abUg70UaBbxhAWsV6g6gMCQSpWNOv7PGE9c
-      GrafanaSettings__RedirectUris: http://localhost:3000/login/generic_oauth,http://localhost:30300/login/generic_oauth
+      GrafanaSettings__RedirectUris: http://localhost:3000/login/generic_oauth
       GrafanaSettings__PostgresHost: postgres
       GrafanaSettings__PostgresPort: "5432"
       GrafanaSettings__PostgresDatabase: iot_sensor_monitoring
@@ -54,7 +54,7 @@ services:
     restart: unless-stopped
 
   worker:
-    image: muhammeteren/iotsensormonitoring:worker
+    image: iot-worker:local
     container_name: iot-worker
     environment:
       DOTNET_ENVIRONMENT: Development
@@ -69,7 +69,7 @@ services:
     restart: unless-stopped
 
   grafana:
-    image: muhammeteren/iotsensormonitoring:grafana
+    image: iot-grafana:local
     container_name: iot-grafana
     ports:
       - "3000:3000"
@@ -109,7 +109,7 @@ services:
     restart: unless-stopped
 
   ui:
-    image: muhammeteren/iotsensormonitoring:ui
+    image: iot-ui:local
     container_name: iot-ui
     ports:
       - "80:80"

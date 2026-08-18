@@ -24,4 +24,14 @@ public class UsersController : ControllerBase
         [FromQuery] Guid? companyId,
         CancellationToken cancellationToken)
         => Ok(await _userService.GetAllAsync(companyId, cancellationToken));
+
+    [HttpPost]
+    [Authorize(Roles = AppRoles.CompanyAdmins)]
+    public async Task<ActionResult<UserDto>> Create(
+        [FromBody] CreateUserRequest request,
+        CancellationToken cancellationToken)
+    {
+        var created = await _userService.CreateAsync(request, cancellationToken);
+        return Created($"/api/users/{created.Id}", created);
+    }
 }

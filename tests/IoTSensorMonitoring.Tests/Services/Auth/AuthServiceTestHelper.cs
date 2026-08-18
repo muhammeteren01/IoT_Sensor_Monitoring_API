@@ -1,6 +1,5 @@
 using IoTSensorMonitoring.Application.Abstractions;
 using IoTSensorMonitoring.Application.DTOs;
-using IoTSensorMonitoring.Application.Interfaces;
 using IoTSensorMonitoring.Application.Interfaces.Repositories;
 using IoTSensorMonitoring.Application.Interfaces.Services;
 using IoTSensorMonitoring.Application.Services;
@@ -15,30 +14,16 @@ internal static class AuthServiceTestHelper
 {
     public static AuthService CreateSut(
         Mock<IUserRepository> userRepository,
-        Mock<IUnitOfWork> unitOfWork,
         Mock<IPasswordService> passwordService,
-        Mock<ITokenService> tokenService,
-        Mock<ICurrentUser> currentUser) =>
+        Mock<ITokenService> tokenService) =>
         new(
             userRepository.Object,
-            unitOfWork.Object,
             passwordService.Object,
             tokenService.Object,
-            currentUser.Object,
-            new RegisterRequestValidator(),
             new LoginRequestValidator());
 
     public static LoginRequest ValidLogin(string email = "ali@test.com", string password = "Secret1!") =>
         new(email, password);
-
-    public static RegisterRequest ValidRegister(
-        string email = "ali@test.com",
-        UserRole role = UserRole.Operator,
-        Guid? companyId = null,
-        string firstName = "Ali",
-        string lastName = "Veli",
-        string password = "Secret1!") =>
-        new(firstName, lastName, email, password, companyId ?? Guid.NewGuid(), role);
 
     public static User CreateUser(
         string email = "ali@test.com",

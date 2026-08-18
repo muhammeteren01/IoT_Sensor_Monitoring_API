@@ -1,15 +1,15 @@
 using IoTSensorMonitoring.Application.DTOs;
-using IoTSensorMonitoring.Application.Validations.Auth;
+using IoTSensorMonitoring.Application.Validations.Users;
 using IoTSensorMonitoring.Domain.Enums;
 using FluentAssertions;
 
-namespace IoTSensorMonitoring.Tests.Validations.Auth;
+namespace IoTSensorMonitoring.Tests.Validations.Users;
 
-public class RegisterRequestValidatorTests
+public class CreateUserRequestValidatorTests
 {
-    private readonly RegisterRequestValidator _sut = new();
+    private readonly CreateUserRequestValidator _sut = new();
 
-    private static RegisterRequest ValidRequest(
+    private static CreateUserRequest ValidRequest(
         string firstName = "Ali",
         string lastName = "Veli",
         string email = "ali@test.com",
@@ -33,7 +33,7 @@ public class RegisterRequestValidatorTests
 
         result.IsValid.Should().BeFalse();
         result.Errors.Should().Contain(error =>
-            error.PropertyName == nameof(RegisterRequest.FirstName) &&
+            error.PropertyName == nameof(CreateUserRequest.FirstName) &&
             error.ErrorMessage == "First name is required.");
     }
 
@@ -44,7 +44,7 @@ public class RegisterRequestValidatorTests
 
         result.IsValid.Should().BeFalse();
         result.Errors.Should().Contain(error =>
-            error.PropertyName == nameof(RegisterRequest.Email) &&
+            error.PropertyName == nameof(CreateUserRequest.Email) &&
             error.ErrorMessage == "A valid email is required.");
     }
 
@@ -55,7 +55,7 @@ public class RegisterRequestValidatorTests
 
         result.IsValid.Should().BeFalse();
         result.Errors.Should().Contain(error =>
-            error.PropertyName == nameof(RegisterRequest.Password) &&
+            error.PropertyName == nameof(CreateUserRequest.Password) &&
             error.ErrorMessage == "Password must be at least 6 characters.");
     }
 
@@ -74,7 +74,7 @@ public class RegisterRequestValidatorTests
 
         result.IsValid.Should().BeFalse();
         result.Errors.Should().Contain(error =>
-            error.PropertyName == nameof(RegisterRequest.Role) &&
+            error.PropertyName == nameof(CreateUserRequest.Role) &&
             error.ErrorMessage == "Invalid user role.");
     }
 }

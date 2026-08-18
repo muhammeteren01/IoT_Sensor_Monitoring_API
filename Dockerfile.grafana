@@ -1,0 +1,6 @@
+FROM grafana/grafana:11.5.2
+USER root
+COPY grafana/provisioning /etc/grafana/provisioning
+COPY grafana/dashboards /etc/grafana/dashboards
+RUN chown -R grafana:root /etc/grafana/provisioning /etc/grafana/dashboards
+USER grafana

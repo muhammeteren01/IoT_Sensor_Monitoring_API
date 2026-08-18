@@ -111,6 +111,7 @@ public class ControllerAuthorizeAttributeTests
 
     [Theory]
     [InlineData(nameof(UsersController.GetAll), AppRoles.CompanyAdmins)]
+    [InlineData(nameof(UsersController.Create), AppRoles.CompanyAdmins)]
     public void UsersController_ActionRoles(string methodName, string expectedRoles)
     {
         AssertMethodRoles(typeof(UsersController), methodName, expectedRoles);

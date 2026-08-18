@@ -1,11 +1,11 @@
 using FluentValidation;
 using IoTSensorMonitoring.Application.DTOs;
 
-namespace IoTSensorMonitoring.Application.Validations.Auth;
+namespace IoTSensorMonitoring.Application.Validations.Users;
 
-public class RegisterRequestValidator : AbstractValidator<RegisterRequest>
+public class CreateUserRequestValidator : AbstractValidator<CreateUserRequest>
 {
-    public RegisterRequestValidator()
+    public CreateUserRequestValidator()
     {
         RuleFor(x => x.FirstName)
             .NotEmpty().WithMessage("First name is required.")

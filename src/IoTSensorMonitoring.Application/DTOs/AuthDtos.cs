@@ -4,14 +4,6 @@ namespace IoTSensorMonitoring.Application.DTOs;
 
 public record LoginRequest(string Email, string Password);
 
-public record RegisterRequest(
-    string FirstName,
-    string LastName,
-    string Email,
-    string Password,
-    Guid? CompanyId,
-    UserRole Role = UserRole.Operator);
-
 public record AuthResponse(
     string Token,
     DateTime ExpiresAt,

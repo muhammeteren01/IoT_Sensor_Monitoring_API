@@ -6,6 +6,9 @@
 # dotenv files
 .env
 
+# Portable Docker image dump (USB pack)
+pack/iot-images.tar
+
 # User-specific files
 *.rsuser
 *.suo

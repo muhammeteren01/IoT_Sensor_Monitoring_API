@@ -9,10 +9,10 @@ stringData:
   POSTGRES_PASSWORD: iot
   POSTGRES_DB: iot_sensor_monitoring
   ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=iot_sensor_monitoring;Username=iot;Password=iot
-  JwtSettings__Secret: IoTSensorMonitoring_DevJwtSecret_ChangeMe_32
+  JwtSettings__Secret: sLronozEdhWeNwQFnFL6stpfVeVKASVKEOI4lzdMoIA
   SeedSettings__Password: Admin123!
   GrafanaSettings__AdminPassword: admin
-  GrafanaSettings__ClientSecret: PulseGridGrafanaOAuthSecret_ChangeMe
+  GrafanaSettings__ClientSecret: xwovJHQ9abUg70UaBbxhAWsV6g6gMCQSpWNOv7PGE9c
   GrafanaSettings__RolePasswordSecret: IoTSensorMonitoring_DevJwtSecret_ChangeMe_32
 ---
 apiVersion: v1

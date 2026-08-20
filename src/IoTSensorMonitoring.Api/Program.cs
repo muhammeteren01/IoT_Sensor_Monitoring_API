@@ -8,10 +8,12 @@ using IoTSensorMonitoring.Application.Validations.Auth;
 using IoTSensorMonitoring.Infrastructure;
 using IoTSensorMonitoring.Infrastructure.DependencyResolvers;
 using IoTSensorMonitoring.Infrastructure.Logging;
+using Microsoft.AspNetCore.RateLimiting;
 using Serilog;
 using Swashbuckle.AspNetCore.Swagger;
 using Swashbuckle.AspNetCore.SwaggerUI;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
@@ -43,6 +45,25 @@ try
             options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
     builder.Services.AddSwaggerDocumentation();
 
+    builder.Services.AddRateLimiter(options =>
+    {
+        options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+        options.AddFixedWindowLimiter("fixed", opt =>
+        {
+            opt.PermitLimit = 100;
+            opt.Window = TimeSpan.FromMinutes(1);
+            opt.QueueLimit = 0;
+        });
+
+        options.AddFixedWindowLimiter("auth", opt =>
+        {
+            opt.PermitLimit = 10;
+            opt.Window = TimeSpan.FromMinutes(1);
+            opt.QueueLimit = 0;
+        });
+    });
+
     var app = builder.Build();
 
     app.UseApiRequestLogging();
@@ -62,13 +83,14 @@ try
         app.UseHttpsRedirection();
     }
 
+    app.UseRateLimiter();
     app.UseAuthentication();
     app.UseAuthorization();
-    app.MapControllers();
+    app.MapControllers().RequireRateLimiting("fixed");
     app.MapGet("/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
 
     await DatabaseInitializer.MigrateAsync(app.Services);
-    await DbSeeder.SeedSuperAdminAsync(app.Services);
+    await DbSeeder.SeedAsync(app.Services);
 
     Log.Information("API starting. Environment={Environment}", app.Environment.EnvironmentName);
     await app.RunAsync();

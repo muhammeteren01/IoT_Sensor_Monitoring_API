@@ -112,7 +112,7 @@ services:
     image: iot-ui:local
     container_name: iot-ui
     ports:
-      - "80:80"
+      - "4040:80"
     depends_on:
       api:
         condition: service_healthy

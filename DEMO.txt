@@ -1,0 +1,103 @@
+PulseGrid — Demo kullanım kılavuzu
+==================================
+
+Adresler
+--------
+UI (PulseGrid) : http://localhost:4040
+API / Swagger  : http://localhost:8080
+Grafana        : http://localhost:3000
+
+Tüm seed kullanıcı şifresi:  Admin123!
+
+
+1) Nasıl ayağa kaldırılır
+-------------------------
+Docker Desktop açık olsun. Bu klasörde (docker-compose.yml'in olduğu yerde):
+
+  docker compose pull
+  docker compose up -d
+
+İlk açılışta 30-60 sn bekle (API migrate + seed, Worker ölçüm, Grafana org senkronu).
+
+Durdurmak:
+
+  docker compose down
+
+Veriyi silmeden durur. Volume'leri de silmek (seed yeniden basılsın) için:
+
+  docker compose down -v
+  docker compose up -d
+
+
+2) PulseGrid UI nasıl kullanılır
+--------------------------------
+Tarayıcı: http://localhost:4040
+
+Giriş yap (aşağıdaki hesaplardan biri).
+Sol menüden şirket, tesis, bölge, cihaz modeli, sensör, kullanıcı, alarm yönetilir.
+
+  SuperAdmin     : tüm şirketleri görür, yeni şirket/kullanıcı ekler
+  CompanyAdmin   : yalnız kendi şirketini görür, o şirkete kullanıcı/tesis/sensör ekler
+  Operator       : kendi şirketinde izler, sınırlı yetki
+
+Kullanıcı ekleme self-register değil; Users ekranından POST /api/users ile eklenir
+(CompanyAdmin / SuperAdmin).
+
+Çıkış: sağ üstten logout, başka hesapla tekrar gir.
+Tenant ayrımını göstermek için Nova ile gir, sonra çıkıp Atlas ile gir;
+Atlas, Nova sensörlerini görmez.
+
+
+3) Grafana nasıl kullanılır
+---------------------------
+Tarayıcı: http://localhost:3000
+"Sign in with PulseGrid" tıkla.
+Açılan ekrana PulseGrid e-posta/şifresini yaz (örn. ayse.kaya@nova.local).
+
+  Nova hesabı  -> yalnız Nova org / Nova verisi
+  Atlas hesabı -> yalnız Atlas org / Atlas verisi
+  SuperAdmin   -> Main Org, tüm şirketler
+
+Şirket kullanıcısı Viewer'dır; başka şirketin grafiğini göremez.
+
+Acil / teknik giriş (OAuth değil):  admin / admin
+
+İlk login'de "No data" çıkarsa: Grafana'dan çıkış yap, 20-30 sn bekle, tekrar gir.
+Dashboard dolması için Worker'ın 1-2 dk ölçüm basmasını bekle.
+
+
+4) API / Swagger (isteğe bağlı)
+-------------------------------
+http://localhost:8080
+Authorize ile login token'ı yapıştırılır.
+Health: http://localhost:8080/health
+
+
+Kullanıcılar
+------------
+Rol              Ad              E-posta                      Şifre        Şirket
+SuperAdmin       Super Admin     admin@iot.local              Admin123!    (tüm şirketler)
+CompanyAdmin     Ayşe Kaya       ayse.kaya@nova.local         Admin123!    Nova Enerji
+Operator         Mehmet Demir    mehmet.demir@nova.local      Admin123!    Nova Enerji
+CompanyAdmin     Elif Yıldız     elif.yildiz@atlas.local      Admin123!    Atlas Lojistik
+Operator         Can Öz          can.oz@atlas.local           Admin123!    Atlas Lojistik
+
+Grafana acil:  admin / admin
+Grafana şirket:  Sign in with PulseGrid  +  yukarıdaki e-posta/şifre
+
+
+Şirketler ve sensörler
+----------------------
+Nova Enerji  (nova@iot.local)  — İstanbul Fabrikası
+  TEMP-NOVA-01   Active        Üretim Hattı     Sıcaklık > 35  Critical
+  HUM-NOVA-02    Active        Soğuk Hava       Nem > 80       Warning
+  PRES-NOVA-03   Active        Çatı Odası       Basınç < 990   Warning
+  BAT-NOVA-04    Maintenance   Bakım Atölyesi   (Worker yazmaz)
+
+Atlas Lojistik  (atlas@iot.local)  — Ankara Depo
+  TEMP-ATL-01    Active        Sevkiyat         Sıcaklık > 30  Warning
+  SIG-ATL-02     Active        Paketleme
+  HUM-ATL-03     Inactive      Arşiv            (Worker yazmaz)
+
+Worker her 10 sn yalnız Active sensörlere ölçüm basar.
+Seed, şirket e-postası (nova@iot.local / atlas@iot.local) varsa tekrar yazmaz.

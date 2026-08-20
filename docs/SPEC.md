@@ -65,7 +65,11 @@ Enum alanlar (DBML varchar notları): `SensorStatus`, `SensorMetric`, `Compariso
 - JWT claim: `sub`, `email`, `role`, `company_id` (SuperAdmin’de yok)
 - EF global query filter: CompanyAdmin / Operator yalnız kendi şirketini görür; SuperAdmin ve Worker filtre uygulamaz
 - DeviceModel şirket kataloğu (`CompanyId`); tesis değil işletme bazlı. Tenant filter var; yazma SuperAdmin / CompanyAdmin
-- Seed (Development): `admin@iot.local` / `Admin123!`
+- Seed (Development, `SeedSettings.Enabled`): SuperAdmin + demo katalog. Şifre hepsi `Admin123!`
+  - SuperAdmin: `admin@iot.local`
+  - Nova Enerji: `ayse.kaya@nova.local` (CompanyAdmin), `mehmet.demir@nova.local` (Operator)
+  - Atlas Lojistik: `elif.yildiz@atlas.local` (CompanyAdmin), `can.oz@atlas.local` (Operator)
+  - 2 tesis, 7 bölge, 3 cihaz modeli, 7 sensör (5 Active), 4 alarm kuralı. Ölçümleri Worker üretir. Idempotent (şirket `ContactEmail` varsa atlar).
 
 ## Worker
 
@@ -81,7 +85,7 @@ Worker, Application’daki `ISensorSimulationService` ile her `IntervalSeconds` 
 
 `docker compose up -d --build` API, Worker, PostgreSQL, Grafana ve PulseGrid UI'yi kaldırır.
 
-- PulseGrid UI: `http://localhost` (nginx; `/api` ve `/oauth` API'ye proxy)
+- PulseGrid UI: `http://localhost:4040` (nginx; `/api` ve `/oauth` API'ye proxy)
 - API Swagger: `http://localhost:8080` (admin@iot.local / Admin123!)
 - Grafana: `http://localhost:3000`
   - SuperAdmin acil giriş: `admin` / `admin` (Main Org, tüm şirketler)

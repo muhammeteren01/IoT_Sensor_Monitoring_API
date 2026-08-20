@@ -7,11 +7,13 @@ using IoTSensorMonitoring.Application.Interfaces.Services;
 using IoTSensorMonitoring.Application.Settings;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 
 namespace IoTSensorMonitoring.Api.Controllers;
 
 [ApiExplorerSettings(IgnoreApi = true)]
+[EnableRateLimiting("auth")]
 [Route("oauth")]
 public class OAuthController : Controller
 {

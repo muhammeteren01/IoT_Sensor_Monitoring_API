@@ -11,6 +11,7 @@ public class UnitOfWork : IUnitOfWork
     public UnitOfWork(
         AppDbContext context,
         IRepository<Company> companies,
+        IIntegrationClientRepository integrationClients,
         IUserRepository users,
         IFacilityRepository facilities,
         IZoneRepository zones,
@@ -23,6 +24,7 @@ public class UnitOfWork : IUnitOfWork
     {
         _context = context;
         Companies = companies;
+        IntegrationClients = integrationClients;
         Users = users;
         Facilities = facilities;
         Zones = zones;
@@ -35,6 +37,7 @@ public class UnitOfWork : IUnitOfWork
     }
 
     public IRepository<Company> Companies { get; }
+    public IIntegrationClientRepository IntegrationClients { get; }
     public IUserRepository Users { get; }
     public IFacilityRepository Facilities { get; }
     public IZoneRepository Zones { get; }

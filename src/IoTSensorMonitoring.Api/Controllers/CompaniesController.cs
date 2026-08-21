@@ -55,7 +55,7 @@ public class CompaniesController : ControllerBase
 
     [HttpPost]
     [Authorize(Roles = AppRoles.SuperAdminOnly)]
-    public async Task<ActionResult<CompanyDto>> Create([FromBody] CreateCompanyRequest request, CancellationToken cancellationToken)
+    public async Task<ActionResult<CompanyCreatedDto>> Create([FromBody] CreateCompanyRequest request, CancellationToken cancellationToken)
     {
         var created = await _companyService.CreateAsync(request, cancellationToken);
         return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);

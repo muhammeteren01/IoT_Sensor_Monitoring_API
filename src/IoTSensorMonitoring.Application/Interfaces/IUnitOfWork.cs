@@ -6,6 +6,7 @@ namespace IoTSensorMonitoring.Application.Interfaces;
 public interface IUnitOfWork : IDisposable
 {
     IRepository<Company> Companies { get; }
+    IIntegrationClientRepository IntegrationClients { get; }
     IUserRepository Users { get; }
     IFacilityRepository Facilities { get; }
     IZoneRepository Zones { get; }

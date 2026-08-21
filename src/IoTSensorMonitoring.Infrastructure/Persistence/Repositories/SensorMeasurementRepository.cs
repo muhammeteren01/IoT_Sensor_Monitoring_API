@@ -21,6 +21,18 @@ public class SensorMeasurementRepository : Repository<SensorMeasurement>, ISenso
             .FirstOrDefaultAsync(cancellationToken);
     }
 
+    public async Task<SensorMeasurement?> GetBySensorIdAndMeasurementDateAsync(
+        Guid sensorId,
+        DateTime measurementDate,
+        CancellationToken cancellationToken = default)
+    {
+        return await Set
+            .AsNoTracking()
+            .FirstOrDefaultAsync(
+                measurement => measurement.SensorId == sensorId && measurement.MeasurementDate == measurementDate,
+                cancellationToken);
+    }
+
     public async Task<bool> HasFullBatteryMeasurementSinceAsync(
         Guid sensorId,
         DateTime since,

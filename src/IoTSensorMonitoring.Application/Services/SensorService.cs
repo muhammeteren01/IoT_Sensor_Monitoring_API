@@ -2,7 +2,6 @@ using FluentValidation;
 using IoTSensorMonitoring.Application.Abstractions;
 using IoTSensorMonitoring.Application.Authorization;
 using IoTSensorMonitoring.Application.Common.Exceptions;
-using IoTSensorMonitoring.Application.DTOs;
 using IoTSensorMonitoring.Application.Interfaces;
 using IoTSensorMonitoring.Application.Interfaces.Services;
 using IoTSensorMonitoring.Domain.Entities;
@@ -72,8 +71,8 @@ public class SensorService : ISensorService
 
     public async Task<IReadOnlyList<SensorDto>> GetAllAsync(CancellationToken cancellationToken = default)
     {
-        var sensors = await _unitOfWork.Sensors.GetAllAsync(cancellationToken);
-        return sensors.Select(sensor => Map(sensor)).ToList();
+        var sensors = await _unitOfWork.Sensors.GetAllWithDeviceModelAsync(cancellationToken);
+        return sensors.Select(sensor => Map(sensor, sensor.DeviceModel, sensor.Zone)).ToList();
     }
 
     public async Task<IReadOnlyList<SensorDto>> GetByZoneIdAsync(Guid zoneId, CancellationToken cancellationToken = default)
@@ -206,5 +205,7 @@ public class SensorService : ISensorService
             sensor.LastCalibrationDate,
             sensor.CreatedAt,
             zone?.Name,
-            deviceModel is null ? null : $"{deviceModel.Manufacturer} {deviceModel.ModelNumber}");
+            deviceModel is null ? null : $"{deviceModel.Manufacturer} {deviceModel.ModelNumber}",
+            deviceModel?.SupportedMetrics ?? string.Empty,
+            deviceModel?.CalibrationPeriodDays);
 }

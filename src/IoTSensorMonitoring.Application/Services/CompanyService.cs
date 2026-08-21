@@ -12,6 +12,7 @@ public class CompanyService : ICompanyService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IGrafanaTenantProvisioner _grafanaTenantProvisioner;
+    private readonly IPasswordService _passwordService;
     private readonly IValidator<CreateCompanyRequest> _createValidator;
     private readonly IValidator<UpdateCompanyRequest> _updateValidator;
     private readonly ILogger<CompanyService> _logger;
@@ -19,18 +20,20 @@ public class CompanyService : ICompanyService
     public CompanyService(
         IUnitOfWork unitOfWork,
         IGrafanaTenantProvisioner grafanaTenantProvisioner,
+        IPasswordService passwordService,
         IValidator<CreateCompanyRequest> createValidator,
         IValidator<UpdateCompanyRequest> updateValidator,
         ILogger<CompanyService> logger)
     {
         _unitOfWork = unitOfWork;
         _grafanaTenantProvisioner = grafanaTenantProvisioner;
+        _passwordService = passwordService;
         _createValidator = createValidator;
         _updateValidator = updateValidator;
         _logger = logger;
     }
 
-    public async Task<CompanyDto> CreateAsync(CreateCompanyRequest request, CancellationToken cancellationToken = default)
+    public async Task<CompanyCreatedDto> CreateAsync(CreateCompanyRequest request, CancellationToken cancellationToken = default)
     {
         await ValidationHelper.EnsureValidAsync(_createValidator, request, cancellationToken);
 
@@ -42,11 +45,29 @@ public class CompanyService : ICompanyService
             CreatedAt = DateTime.UtcNow
         };
 
+        var (clientId, clientSecret) = IntegrationClientCredentials.Create(company.Id);
+        var integrationClient = new IntegrationClient
+        {
+            CompanyId = company.Id,
+            ClientId = clientId,
+            ClientSecretHash = _passwordService.HashPassword(clientSecret),
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+
         await _unitOfWork.Companies.AddAsync(company, cancellationToken);
+        await _unitOfWork.IntegrationClients.AddAsync(integrationClient, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         await TryProvisionAsync(company, cancellationToken);
 
-        return Map(company);
+        return new CompanyCreatedDto(
+            company.Id,
+            company.Name,
+            company.ContactEmail,
+            company.IsActive,
+            company.CreatedAt,
+            clientId,
+            clientSecret);
     }
 
     public async Task<IReadOnlyList<CompanyDto>> GetAllAsync(CancellationToken cancellationToken = default)

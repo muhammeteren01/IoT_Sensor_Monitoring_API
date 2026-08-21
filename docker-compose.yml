@@ -23,6 +23,7 @@ services:
     ports:
       - "8080:8080"
     environment:
+      TZ: Europe/Istanbul
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=iot_sensor_monitoring;Username=iot;Password=iot
       JwtSettings__Secret: sLronozEdhWeNwQFnFL6stpfVeVKASVKEOI4lzdMoIA
@@ -55,12 +56,30 @@ services:
 
   worker:
     image: muhammeteren/iotsensormonitoring:worker
+    build:
+      context: .
+      dockerfile: src/IoTSensorMonitoring.Worker/Dockerfile
     container_name: iot-worker
     environment:
+      TZ: Europe/Istanbul
       DOTNET_ENVIRONMENT: Development
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=iot_sensor_monitoring;Username=iot;Password=iot
       WorkerSettings__IntervalSeconds: "10"
       WorkerSettings__CalibrationWarningDays: "7"
+      WorkerExecution__Mode: ApiIntegration
+      IntegrationSettings__IntervalSeconds: "10"
+      IntegrationSettings__CalibrationWarningDays: "7"
+      IntegrationSettings__SensorSyncIntervalSeconds: "60"
+      IntegrationSettings__FlushBatchSize: "50"
+      IntegrationSettings__MaxFlushAttempts: "10"
+      IntegrationSettings__ApiBaseUrl: http://api:8080
+      IntegrationSettings__LocalStorePath: /app/data/worker-queue.db
+      IntegrationSettings__Clients__0__ClientId: ${INTEGRATION_CLIENT_ID_0:-}
+      IntegrationSettings__Clients__0__ClientSecret: ${INTEGRATION_CLIENT_SECRET_0:-}
+      IntegrationSettings__Clients__1__ClientId: ${INTEGRATION_CLIENT_ID_1:-}
+      IntegrationSettings__Clients__1__ClientSecret: ${INTEGRATION_CLIENT_SECRET_1:-}
+    volumes:
+      - ./localdb:/app/data
     depends_on:
       postgres:
         condition: service_healthy

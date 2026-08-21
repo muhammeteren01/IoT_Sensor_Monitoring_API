@@ -74,7 +74,7 @@ public class SensorMeasurementConfiguration : IEntityTypeConfiguration<SensorMea
         builder.Property(x => x.SignalStrength).HasColumnName("signal_strength");
         builder.Property(x => x.MeasurementDate).HasColumnName("measurement_date").IsRequired();
 
-        builder.HasIndex(x => new { x.SensorId, x.MeasurementDate });
+        builder.HasIndex(x => new { x.SensorId, x.MeasurementDate }).IsUnique();
 
         builder.HasOne(x => x.Sensor)
             .WithMany(x => x.Measurements)

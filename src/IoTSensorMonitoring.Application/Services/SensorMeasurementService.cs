@@ -35,6 +35,20 @@ public class SensorMeasurementService : ISensorMeasurementService
 
         await EnsureSensorTenantAsync(request.SensorId, cancellationToken);
 
+        var measurementDate = ToUtcInstant(request.MeasurementDate ?? DateTime.UtcNow);
+        var existing = await _unitOfWork.SensorMeasurements.GetBySensorIdAndMeasurementDateAsync(
+            request.SensorId,
+            measurementDate,
+            cancellationToken);
+        if (existing is not null)
+        {
+            _logger.LogInformation(
+                "Duplicate measurement ignored. SensorId: {SensorId}, MeasurementDate: {MeasurementDate}",
+                request.SensorId,
+                measurementDate);
+            return Map(existing);
+        }
+
         var measurement = new SensorMeasurement
         {
             SensorId = request.SensorId,
@@ -43,7 +57,7 @@ public class SensorMeasurementService : ISensorMeasurementService
             Pressure = request.Pressure,
             BatteryLevel = request.BatteryLevel,
             SignalStrength = request.SignalStrength,
-            MeasurementDate = request.MeasurementDate ?? DateTime.UtcNow
+            MeasurementDate = measurementDate
         };
 
         await _unitOfWork.SensorMeasurements.AddAsync(measurement, cancellationToken);
@@ -130,6 +144,16 @@ public class SensorMeasurementService : ISensorMeasurementService
         TenantGuard.EnsureCompanyAccess(_currentUser, sensor.Zone.Facility.CompanyId);
     }
 
+    private static DateTime ToUtcInstant(DateTime value)
+    {
+        if (value.Kind == DateTimeKind.Unspecified)
+        {
+            value = DateTime.SpecifyKind(value, DateTimeKind.Local);
+        }
+
+        return value.ToUniversalTime();
+    }
+
     private static SensorMeasurementDto Map(SensorMeasurement measurement) =>
         new(
             measurement.Id,
@@ -139,5 +163,7 @@ public class SensorMeasurementService : ISensorMeasurementService
             measurement.Pressure,
             measurement.BatteryLevel,
             measurement.SignalStrength,
-            measurement.MeasurementDate);
+            measurement.MeasurementDate.Kind == DateTimeKind.Utc
+                ? measurement.MeasurementDate.ToLocalTime()
+                : measurement.MeasurementDate);
 }

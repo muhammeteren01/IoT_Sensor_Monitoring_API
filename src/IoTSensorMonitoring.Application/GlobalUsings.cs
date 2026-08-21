@@ -1,0 +1,10 @@
+global using IoTSensorMonitoring.Application.DTOs.Alerts;
+global using IoTSensorMonitoring.Application.DTOs.Auth;
+global using IoTSensorMonitoring.Application.DTOs.Companies;
+global using IoTSensorMonitoring.Application.DTOs.DeviceModels;
+global using IoTSensorMonitoring.Application.DTOs.Facilities;
+global using IoTSensorMonitoring.Application.DTOs.Maintenance;
+global using IoTSensorMonitoring.Application.DTOs.Measurements;
+global using IoTSensorMonitoring.Application.DTOs.Sensors;
+global using IoTSensorMonitoring.Application.DTOs.Users;
+global using IoTSensorMonitoring.Application.DTOs.Zones;

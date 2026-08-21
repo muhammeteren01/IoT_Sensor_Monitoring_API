@@ -12,7 +12,7 @@ public class Worker(
     public override async Task StartAsync(CancellationToken cancellationToken)
     {
         logger.LogInformation(
-            "Worker Service starting. IntervalSeconds={IntervalSeconds}",
+            "DirectDb Worker starting. IntervalSeconds={IntervalSeconds}",
             Math.Max(1, settings.Value.IntervalSeconds));
         await base.StartAsync(cancellationToken);
     }

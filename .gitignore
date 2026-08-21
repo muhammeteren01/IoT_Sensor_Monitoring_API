@@ -5,9 +5,15 @@
 
 # dotenv files
 .env
+.env.integration
 
 # Portable Docker image dump (USB pack)
 pack/iot-images.tar
+
+# Worker ApiIntegration local SQLite queue
+**/data/worker-queue.db
+**/data/worker-queue.db-*
+/localdb/
 
 # User-specific files
 *.rsuser

@@ -18,6 +18,7 @@ public class AppDbContext : DbContext
     public Guid CurrentTenantId => _currentUser.CompanyId ?? Guid.Empty;
 
     public DbSet<Company> Companies => Set<Company>();
+    public DbSet<IntegrationClient> IntegrationClients => Set<IntegrationClient>();
     public DbSet<User> Users => Set<User>();
     public DbSet<Facility> Facilities => Set<Facility>();
     public DbSet<Zone> Zones => Set<Zone>();
@@ -34,6 +35,9 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<Company>().HasQueryFilter(entity =>
             !ApplyTenantFilter || entity.Id == CurrentTenantId);
+
+        modelBuilder.Entity<IntegrationClient>().HasQueryFilter(entity =>
+            !ApplyTenantFilter || entity.CompanyId == CurrentTenantId);
 
         modelBuilder.Entity<User>().HasQueryFilter(entity =>
             !ApplyTenantFilter || entity.CompanyId == CurrentTenantId);

@@ -29,12 +29,12 @@ public class SensorsController : ControllerBase
     }
 
     [HttpGet]
-    [Authorize(Roles = AppRoles.All)]
+    [Authorize(Roles = AppRoles.SensorReaders)]
     public async Task<ActionResult<IReadOnlyList<SensorDto>>> GetAll(CancellationToken cancellationToken)
         => Ok(await _sensorService.GetAllAsync(cancellationToken));
 
     [HttpGet("{id:guid}")]
-    [Authorize(Roles = AppRoles.All)]
+    [Authorize(Roles = AppRoles.SensorReaders)]
     public async Task<ActionResult<SensorDto>> GetById(Guid id, CancellationToken cancellationToken)
         => Ok(await _sensorService.GetByIdAsync(id, cancellationToken));
 

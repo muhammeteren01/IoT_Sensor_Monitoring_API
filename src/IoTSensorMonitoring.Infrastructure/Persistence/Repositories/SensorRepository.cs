@@ -48,6 +48,16 @@ public class SensorRepository : Repository<Sensor>, ISensorRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Sensor>> GetAllWithDeviceModelAsync(CancellationToken cancellationToken = default)
+    {
+        return await Set
+            .AsNoTracking()
+            .Include(sensor => sensor.DeviceModel)
+            .Include(sensor => sensor.Zone)
+            .OrderBy(sensor => sensor.Name)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<bool> ExistsInCompanyAsync(Guid companyId, CancellationToken cancellationToken = default)
     {
         return await Set.AnyAsync(

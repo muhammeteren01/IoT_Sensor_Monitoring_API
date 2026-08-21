@@ -37,7 +37,7 @@ kubectl apply -k k8s
 ```
 src/
   IoTSensorMonitoring.Domain          → Entities, enums (bağımlılık yok)
-  IoTSensorMonitoring.Application     → DTO, interface, iş kuralları (→ Domain)
+  IoTSensorMonitoring.Application     → DTO (feature klasörleri), interface, iş kuralları (→ Domain)
   IoTSensorMonitoring.Infrastructure  → EF Core, PostgreSQL, repository (→ Application)
   IoTSensorMonitoring.Api             → REST, Swagger, Serilog host (→ Application, Infrastructure)
   IoTSensorMonitoring.Worker          → Simülatör + rules engine host (→ Application, Infrastructure)
@@ -65,13 +65,23 @@ Enum alanlar (DBML varchar notları): `SensorStatus`, `SensorMetric`, `Compariso
 - JWT claim: `sub`, `email`, `role`, `company_id` (SuperAdmin’de yok)
 - EF global query filter: CompanyAdmin / Operator yalnız kendi şirketini görür; SuperAdmin ve Worker filtre uygulamaz
 - DeviceModel şirket kataloğu (`CompanyId`); tesis değil işletme bazlı. Tenant filter var; yazma SuperAdmin / CompanyAdmin
-- Seed (Development, `SeedSettings.Enabled`): SuperAdmin + demo katalog. Şifre hepsi `Admin123!`
+- Seed (Development, `SeedSettings.Enabled`): yalnız SuperAdmin. Şifre `SeedSettings.Password` (varsayılan `Admin123!`)
   - SuperAdmin: `admin@iot.local`
-  - Nova Enerji: `ayse.kaya@nova.local` (CompanyAdmin), `mehmet.demir@nova.local` (Operator)
-  - Atlas Lojistik: `elif.yildiz@atlas.local` (CompanyAdmin), `can.oz@atlas.local` (Operator)
-  - 2 tesis, 7 bölge, 3 cihaz modeli, 7 sensör (5 Active), 4 alarm kuralı. Ölçümleri Worker üretir. Idempotent (şirket `ContactEmail` varsa atlar).
+- Company create (`POST /api/companies`): otomatik `IntegrationClient` üretir; `client_id` + `client_secret` yanıtta **bir kez** döner (secret hash DB'de).
+- M2M: `POST /oauth/token` `grant_type=client_credentials` → JWT (`role=IntegrationClient`, `company_id`)
+- `GET /api/sensors` IntegrationClient rolü ile de okunabilir (`SupportedMetrics`, `CalibrationPeriodDays` dahil)
+- `POST /api/sensor-measurements` IntegrationClient rolü ile de yazılabilir
 
 ## Worker
+
+`WorkerExecution:Mode` ile çalışma modu seçilir (Docker: `WorkerExecution__Mode`):
+
+- **DirectDb** (varsayılan): mevcut simülasyon; doğrudan PostgreSQL'e yazar.
+- **ApiIntegration**: client_id/client_secret ile API'ye ölçüm push + SQLite offline queue.
+
+Aynı anda yalnız bir mod aktif olmalı; çift yazımı önlemek için tek worker container.
+
+### DirectDb (mevcut)
 
 Worker, Application’daki `ISensorSimulationService` ile her `IntervalSeconds` (varsayılan 10) bir döngü çalıştırır. JWT yok; `SystemCurrentUser` tenant filtresini kapatır.
 
@@ -80,6 +90,19 @@ Worker, Application’daki `ISensorSimulationService` ile her `IntervalSeconds` 
 - Alarm: aktif `AlertRule` eşiği aşılırsa `AlertHistory` yazılır; aynı kural için çözülmemiş kayıt varsa tekrar yazılmaz
 - Kalibrasyon: `CalibrationPeriodDays` doluysa vadesi geçmiş / `CalibrationWarningDays` (7) içindeyse Warning log
 - Döngü başına DI scope (DbContext sızıntısı olmasın)
+
+### ApiIntegration (Faz 3)
+
+- PostgreSQL’e yazmaz; `IntegrationSettings:Clients` ile birden fazla firma
+- Tek SQLite (`LocalStorePath`, Docker volume `worker_data` → `/app/data/worker-queue.db`); tenant = `client_id`
+- Tablolar: `synced_sensors` (cache), `measurement_queue` (`attempt_count`), `sync_state`, `last_measurements`
+- Startup + periyodik sensör sync: `GET /health` → token → `GET /api/sensors`
+- Offline: ölçüm queue’ya yazılır; Online: batch flush → 2xx ise sil; hata ise `attempt_count++` (max `MaxFlushAttempts`)
+- `MeasurementDate` = ölçüm anı; API’de `(SensorId, MeasurementDate)` unique (duplicate ignore)
+- Kalibrasyon uyarısı local cache üzerinden loglanır
+
+Docker DirectDb: `WorkerExecution__Mode: DirectDb`  
+Docker ApiIntegration: `WorkerExecution__Mode: ApiIntegration` + `IntegrationSettings__Clients__0__ClientId` / `ClientSecret` + `docker compose up -d worker`
 
 ## Grafana
 

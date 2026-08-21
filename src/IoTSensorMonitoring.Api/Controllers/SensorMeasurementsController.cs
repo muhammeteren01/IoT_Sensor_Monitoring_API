@@ -29,7 +29,7 @@ public class SensorMeasurementsController : ControllerBase
         => Ok(await _measurementService.GetByIdAsync(id, cancellationToken));
 
     [HttpPost]
-    [Authorize(Roles = AppRoles.All)]
+    [Authorize(Roles = AppRoles.MeasurementWriters)]
     public async Task<ActionResult<SensorMeasurementDto>> Create(
         [FromBody] CreateSensorMeasurementRequest request,
         CancellationToken cancellationToken)

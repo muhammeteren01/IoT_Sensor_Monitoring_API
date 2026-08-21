@@ -19,17 +19,20 @@ public class OAuthController : Controller
 {
     private readonly IAuthService _authService;
     private readonly IOauthAuthorizationService _oauth;
+    private readonly IIntegrationAuthService _integrationAuth;
     private readonly GrafanaSettings _settings;
     private readonly ILogger<OAuthController> _logger;
 
     public OAuthController(
         IAuthService authService,
         IOauthAuthorizationService oauth,
+        IIntegrationAuthService integrationAuth,
         IOptions<GrafanaSettings> settings,
         ILogger<OAuthController> logger)
     {
         _authService = authService;
         _oauth = oauth;
+        _integrationAuth = integrationAuth;
         _settings = settings.Value;
         _logger = logger;
     }
@@ -103,6 +106,26 @@ public class OAuthController : Controller
     [AllowAnonymous]
     public async Task<IActionResult> Token([FromForm] OAuthTokenForm form, CancellationToken cancellationToken)
     {
+        if (string.Equals(form.grant_type, "client_credentials", StringComparison.Ordinal))
+        {
+            try
+            {
+                ResolveClientCredentials(form, out var clientId, out var clientSecret);
+                var token = await _integrationAuth.IssueTokenAsync(clientId, clientSecret, cancellationToken);
+                return Json(new
+                {
+                    access_token = token.AccessToken,
+                    token_type = token.TokenType,
+                    expires_in = token.ExpiresIn
+                });
+            }
+            catch (UnauthorizedException exception)
+            {
+                _logger.LogWarning("Integration client_credentials rejected: {Message}", exception.Message);
+                return Unauthorized(new { error = "invalid_client", error_description = exception.Message });
+            }
+        }
+
         if (!ClientMatches(form.client_id, form.client_secret))
         {
             return Unauthorized(new { error = "invalid_client" });
@@ -205,6 +228,26 @@ public class OAuthController : Controller
         }
 
         return null;
+    }
+
+    private void ResolveClientCredentials(OAuthTokenForm form, out string clientId, out string clientSecret)
+    {
+        clientId = form.client_id ?? "";
+        clientSecret = form.client_secret ?? "";
+
+        var header = Request.Headers.Authorization.ToString();
+        if (AuthenticationHeaderValue.TryParse(header, out var parsed)
+            && string.Equals(parsed.Scheme, "Basic", StringComparison.OrdinalIgnoreCase)
+            && !string.IsNullOrWhiteSpace(parsed.Parameter))
+        {
+            var decoded = Encoding.UTF8.GetString(Convert.FromBase64String(parsed.Parameter));
+            var separator = decoded.IndexOf(':');
+            if (separator > 0)
+            {
+                clientId = decoded[..separator];
+                clientSecret = decoded[(separator + 1)..];
+            }
+        }
     }
 
     private bool ClientMatches(string? clientId, string? clientSecret)

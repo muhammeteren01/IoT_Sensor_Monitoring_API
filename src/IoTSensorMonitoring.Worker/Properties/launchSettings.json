@@ -5,7 +5,9 @@
       "commandName": "Project",
       "dotnetRunMessages": true,
       "environmentVariables": {
-        "DOTNET_ENVIRONMENT": "Development"
+        "DOTNET_ENVIRONMENT": "Development",
+        "IntegrationSettings__Clients__0__ClientId": "iot_259e12c5_0608b217",
+        "IntegrationSettings__Clients__0__ClientSecret": "WYccYXhFGqF+Uq1aSdLz1cE7fNrqewC1F8iXbvATzFQ="
       }
     }
   }

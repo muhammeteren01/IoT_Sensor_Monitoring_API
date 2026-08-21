@@ -106,7 +106,7 @@ public class MaintenanceLogService : IMaintenanceLogService
 
     private static DateTime ResolveMeasurementDateAfter(SensorMeasurement? previous, DateTime performedAt)
     {
-        var measurementDate = DateTime.UtcNow;
+        var measurementDate = DateTime.Now.ToUniversalTime();
         if (measurementDate < performedAt)
         {
             measurementDate = performedAt;

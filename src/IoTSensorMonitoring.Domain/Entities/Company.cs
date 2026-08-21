@@ -13,4 +13,5 @@ public class Company : BaseEntity
     public ICollection<Facility> Facilities { get; set; } = [];
     public ICollection<DeviceModel> DeviceModels { get; set; } = [];
     public ICollection<User> Users { get; set; } = [];
+    public ICollection<IntegrationClient> IntegrationClients { get; set; } = [];
 }

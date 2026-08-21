@@ -68,6 +68,7 @@ public class SensorSimulationService : ISensorSimulationService
         var previous = await _unitOfWork.SensorMeasurements.GetLatestBySensorIdAsync(sensor.Id, cancellationToken);
         var effectivePrevious = await ResolvePreviousWithBatteryReplacementAsync(sensor, previous, metrics, cancellationToken);
         var measurement = _generator.Next(sensor.Id, effectivePrevious, metrics);
+        measurement.MeasurementDate = measurement.MeasurementDate.ToUniversalTime();
 
         await _unitOfWork.SensorMeasurements.AddAsync(measurement, cancellationToken);
 

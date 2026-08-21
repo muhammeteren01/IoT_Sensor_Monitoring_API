@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using IoTSensorMonitoring.Application.Authorization;
 using IoTSensorMonitoring.Application.Interfaces.Services;
 using IoTSensorMonitoring.Application.Settings;
 using IoTSensorMonitoring.Domain.Entities;
@@ -20,8 +21,6 @@ public class TokenService : ITokenService
 
     public string CreateToken(User user, out DateTime expiresAt)
     {
-        expiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.ExpirationInMinutes);
-
         var claims = new List<Claim>
         {
             new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
@@ -37,6 +36,29 @@ public class TokenService : ITokenService
         {
             claims.Add(new Claim("company_id", user.CompanyId.Value.ToString()));
         }
+
+        return CreateSignedToken(claims, out expiresAt);
+    }
+
+    public string CreateClientCredentialsToken(IntegrationClient client, out DateTime expiresAt)
+    {
+        var claims = new List<Claim>
+        {
+            new(JwtRegisteredClaimNames.Sub, client.Id.ToString()),
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new(ClaimTypes.NameIdentifier, client.Id.ToString()),
+            new(ClaimTypes.Role, AppRoles.IntegrationClient),
+            new("company_id", client.CompanyId.ToString()),
+            new("client_id", client.ClientId),
+            new("token_type", "client_credentials")
+        };
+
+        return CreateSignedToken(claims, out expiresAt);
+    }
+
+    private string CreateSignedToken(IEnumerable<Claim> claims, out DateTime expiresAt)
+    {
+        expiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.ExpirationInMinutes);
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Secret));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
